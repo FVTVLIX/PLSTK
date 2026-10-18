@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Easier navigation on longer timelines
+
+Moving visual or audio clips and trimming visual clips now scrolls the timeline near its horizontal edges. Speed increases toward the edge, with extra working room as the draft moves beyond the current edit. Drag calculations include scroll distance so clips stay with the pointer.
+
+Release still commits one edit. Escape, switching away from the app, hiding the timeline, and changing zoom cancel the current draft. Snapping, track placement, source limits, and collision validation remain part of the edit workflow.
+
+Eight new tests cover navigation math and native scroll behavior, bringing the suite to 63 passing tests. Native component checks include nested SwiftUI scroll views, boundary clamping, cancellation, and starting a drag from an already scrolled viewport. Project format remains version 8.
+
 ### Editable text titles
 
 Text now opens a visual preset panel with Simple, Statement, and Caption styles. Add a title above your footage, enter the wording, choose a color, and place it with Top, Centre, or Bottom. Edit text is also available in the viewer. Selection handles surround the title itself, while Fine tune contains exact size and alignment.

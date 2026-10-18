@@ -15,7 +15,8 @@ let package = Package(
         .target(name: "LocalVideoCore"),
         .executableTarget(name: "LocalVideoEditor", dependencies: ["LocalVideoCore"]),
         .executableTarget(name: "LocalVideoCLI", dependencies: ["LocalVideoCore"]),
-        .testTarget(name: "LocalVideoCoreTests", dependencies: ["LocalVideoCore"])
+        .testTarget(name: "LocalVideoCoreTests", dependencies: ["LocalVideoCore"]),
+        .testTarget(name: "LocalVideoEditorTests", dependencies: ["LocalVideoEditor", "LocalVideoCore"])
     ],
     swiftLanguageModes: [.v5]
 )

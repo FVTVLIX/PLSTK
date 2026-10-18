@@ -26,6 +26,10 @@ The timeline supports up to 32 visual tracks and two independent audio lanes. Vi
 
 Move, trim, split, duplicate, and remove visual clips. Move, trim, split, and remove audio clips. Editing actions support undo and redo.
 
+While moving a visual or audio clip, or trimming a visual clip, hold the pointer near either horizontal edge of the timeline to scroll. Scrolling speeds up as you approach the edge. Extra working room appears as you move farther along the edit.
+
+The clip stays with the pointer as the timeline scrolls. Snapping and source limits still apply. Release to commit one undoable edit, or press Escape to cancel the draft. Switching away from the app, hiding the timeline, or changing zoom also cancels an active timeline drag.
+
 ### Work visually
 
 Select a clip to open its toolbox. Use Size & position, Rotate, Opacity, Trim & split, Sound, and Arrange as appropriate for the selected media.
@@ -148,7 +152,7 @@ The current rendering workflow handles SDR output. Full HDR and color management
 
 Audio lanes mix without automatic loudness normalization. Fades use linear amplitude curves, and the final MP4 is opaque rather than an export with transparency.
 
-Only one timeline clip can be selected at a time. Timeline edge scrolling, persistent media caches, and bundled media workers remain future work.
+Only one timeline clip can be selected at a time. Vertical scrolling while dragging between tracks, persistent media caches, and bundled media workers remain future work.
 
 ## Development and verification
 
@@ -159,7 +163,7 @@ swift test
 python3 scripts/smoke-test.py
 ```
 
-The current suite contains 55 tests. Coverage includes project migration, save and load, editing operations, transforms, layered visuals, image transparency, audio mixing, fade continuity, editable titles, project recovery, and decoded comparisons between preview and export.
+The current suite contains 63 tests. Coverage includes project migration, save and load, editing operations, transforms, layered visuals, image transparency, audio mixing, fade continuity, editable titles, project recovery, timeline navigation, and decoded comparisons between preview and export.
 
 The smoke test generates synthetic footage under `TestOutput/` and checks timing, cut boundaries, silent clips, delayed audio, rotation, variable frame rate handling, and export cancellation. Generated media and local project files are excluded from Git.
 

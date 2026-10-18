@@ -20,6 +20,10 @@ struct TimelineClipCell: View {
     let moving: Bool
     let draft: TimelineTrimDraft?
     let select: () -> Void
+    let begin: () -> Void
+    let cancel: () -> Void
+    @State private var gestureActive = false
+    @GestureState private var dragging = false
     let move: (Double, Double, Bool) -> Void
     let trim: (TrimEdge, Double, Bool) -> Void
 
@@ -34,6 +38,9 @@ struct TimelineClipCell: View {
             }
         }.frame(width: width, height: 68)
             .zIndex(draft != nil ? 2 : 0)
+            .onChange(of: dragging) { _, active in
+                if !active { if gestureActive { cancel() }; gestureActive = false }
+            }
             .help("Drag to place in time or move between tracks. Drag an edge to trim. Small clips can be trimmed in the inspector.")
     }
     private var clipBody: some View {
@@ -53,9 +60,15 @@ struct TimelineClipCell: View {
             .clipped().opacity(moving ? 0.45 : 1)
             .contentShape(Rectangle())
             .onTapGesture(perform: select)
-            .gesture(DragGesture(minimumDistance: 5, coordinateSpace: .named("timeline"))
-                .onChanged { move(Double($0.translation.width), Double($0.translation.height), false) }
-                .onEnded { move(Double($0.translation.width), Double($0.translation.height), true) })
+            .gesture(DragGesture(minimumDistance: 5, coordinateSpace: .named("timelineViewport"))
+                .updating($dragging) { _, active, _ in active = true }
+                .onChanged { value in
+                    if !gestureActive { gestureActive = true; begin() }
+                    move(Double(value.translation.width), Double(value.translation.height), false)
+                }
+                .onEnded { value in
+                    move(Double(value.translation.width), Double(value.translation.height), true); gestureActive = false
+                })
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(title), \(String(format: "%.2f", clip.duration)) seconds")
             .accessibilityAddTraits(.isButton).accessibilityAction { select() }
@@ -78,9 +91,15 @@ struct TimelineClipCell: View {
             .frame(width: 8, height: 68)
             .overlay { Capsule().fill(Color.black.opacity(0.5)).frame(width: 2, height: 18) }
             .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .named("timeline"))
-                .onChanged { trim(edge, Double($0.translation.width), false) }
-                .onEnded { trim(edge, Double($0.translation.width), true) })
+            .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .named("timelineViewport"))
+                .updating($dragging) { _, active, _ in active = true }
+                .onChanged { value in
+                    if !gestureActive { gestureActive = true; begin() }
+                    trim(edge, Double(value.translation.width), false)
+                }
+                .onEnded { value in
+                    trim(edge, Double(value.translation.width), true); gestureActive = false
+                })
             .accessibilityLabel(edge == .start ? "Trim start" : "Trim end")
     }
 }

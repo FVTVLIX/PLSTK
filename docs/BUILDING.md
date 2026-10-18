@@ -36,7 +36,7 @@ swift test
 python3 scripts/smoke-test.py
 ```
 
-The tests exercise native macOS media services. Run them in a normal local developer session rather than an environment that blocks those services.
+The tests exercise native macOS media services and an isolated AppKit and SwiftUI view hierarchy. Use a macOS desktop session for the native editor tests. Run them in a normal local developer session rather than an environment that blocks those services.
 
 The smoke test generates its own footage and stores results under `TestOutput/`. It does not require personal media. It may replace earlier generated fixtures in that directory.
 

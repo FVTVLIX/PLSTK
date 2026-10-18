@@ -48,3 +48,11 @@ Exercise recovery with synthetic projects. Verify that the original project byte
 Editable titles live in the project as generated visual assets. They have no external media path. Core Text supplies the same transparent raster to the still preview proxy and FFmpeg preparation. Preserve that shared layout when adding typography controls.
 
 A title edit must not change another split part or duplicate. Copy the generated source when more than one clip uses it. Include title content in thumbnail cache identity, preserve embedded data in recovery copies, and exclude generated assets from missing media and relink workflows. Verify decoded preview and export frames across title boundaries and visual transforms.
+
+## Timeline navigation verification
+
+Timeline gestures use a stationary viewport coordinate space. Add the scroll offset change exactly once when calculating movement or trim distance. Keep the project unchanged during a draft, then commit through the normal edit operation on release. Cancelled gestures must not restart while the same pointer gesture remains active.
+
+The editor tests exercise native NSScrollView behavior and an isolated SwiftUI hierarchy with nested horizontal and vertical scroll views. Coverage includes scrolling bounds, progressive speed, elapsed time limits, cancellation, and starting a drag after scrolling. The app check also verifies ordinary scrolling and zoom through accessibility controls.
+
+Physical pointer drag automation on the current verification display reports `windowNotFoundAtPosition`. The release checks therefore distinguish native component tests from a completed physical edge drag. Recheck visual move, trim, and audio move with a pointer when a compatible display is available.

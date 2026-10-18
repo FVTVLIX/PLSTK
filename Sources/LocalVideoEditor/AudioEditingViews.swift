@@ -59,6 +59,10 @@ struct AudioTimelineLane: View {
     @ObservedObject var store: EditorStore
     let lane: Int
     let scale: Double
+    @ObservedObject var scrolling: TimelineScrollController
+    @GestureState private var dragging = false
+    @State private var translation = 0.0
+    @State private var cancelled = false
     @State private var moving: UUID?
     @State private var proposed: Int64 = 0
     var body: some View {
@@ -81,15 +85,18 @@ struct AudioTimelineLane: View {
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .overlay(RoundedRectangle(cornerRadius: 4).stroke(store.selectedAudio == audio.id ? .white : .clear))
                     .contentShape(Rectangle()).onTapGesture { store.selectAudio(audio) }
-                    .gesture(DragGesture(minimumDistance: 4, coordinateSpace: .named("timeline"))
+                    .gesture(DragGesture(minimumDistance: 4, coordinateSpace: .named("timelineViewport"))
+                        .updating($dragging) { _, active, _ in active = true }
                         .onChanged { value in
-                            guard !store.busy else { return }
-                            if moving == nil { store.player?.pause(); store.selectAudio(audio) }
-                            moving = audio.id
-                            proposed = max(0, store.snapTimelineFrame(audio.startFrame + TimelineSnapping.frameDelta(points: value.translation.width, pointsPerSecond: scale), excluding: audio.id, scale: scale))
+                            guard !store.busy, !cancelled else { return }
+                            if moving == nil { store.player?.pause(); store.selectAudio(audio); scrolling.begin(audio.id) }
+                            moving = audio.id; translation = value.translation.width
+                            updateDraft(audio)
                         }
-                        .onEnded { _ in
-                            guard !store.busy, moving == audio.id else { moving = nil; return }
+                        .onEnded { value in
+                            defer { cancelled = false; scrolling.end(audio.id) }
+                            guard !store.busy, !cancelled, moving == audio.id else { moving = nil; return }
+                            translation = value.translation.width; updateDraft(audio)
                             let frame = proposed; moving = nil; store.moveAudio(audio.id, to: frame)
                         })
                     .overlay { AudioFadeOverlay(store: store, clip: audio, scale: scale) }
@@ -99,7 +106,25 @@ struct AudioTimelineLane: View {
                     .help("Drag to place audio. Use the inspector for source trim, lane, volume and fades. Drag the circular handles to set fades.")
             }
         }.frame(height: 52).clipped().disabled(store.busy)
-            .onChange(of: store.project) { _, _ in moving = nil }
-            .onExitCommand { moving = nil }
+            .onChange(of: dragging) { _, active in
+                if !active { cancelDrag(); cancelled = false }
+            }
+            .onChange(of: store.project) { _, _ in cancelDrag() }
+            .onChange(of: store.busy) { _, busy in if busy { cancelDrag() } }
+            .onChange(of: scrolling.cancellation) { _, _ in if moving != nil { cancelled = true; moving = nil } }
+            .onChange(of: scrolling.offset) { _, _ in
+                if !cancelled, let audio = store.project.audioClips.first(where: { $0.id == moving }) { updateDraft(audio) }
+            }
+            .onExitCommand(perform: cancelDrag)
+            .onDisappear(perform: cancelDrag)
+    }
+    private func updateDraft(_ audio: AudioClip) {
+        let delta = TimelineSnapping.frameDelta(points: scrolling.distance(translation), pointsPerSecond: scale)
+        proposed = max(0, min(30_000_000, store.snapTimelineFrame(audio.startFrame + delta, excluding: audio.id, scale: scale)))
+        scrolling.extend(to: Double(proposed + audio.frames) / 30 * scale)
+    }
+    private func cancelDrag() {
+        if let moving { cancelled = true; scrolling.end(moving) }
+        moving = nil
     }
 }

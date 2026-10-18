@@ -45,6 +45,8 @@ struct EditorView: View {
     @State private var movingClip: UUID?
     @State private var moveDraft: VisualMoveDraft?
     @State private var gestureCancelled = false
+    @StateObject private var timelineScroll = TimelineScrollController()
+    @State private var dragTranslation = CGSize.zero
 
     var body: some View {
         VStack(spacing: 0) {
@@ -108,12 +110,17 @@ struct EditorView: View {
             if busy {
                 if trimDraft != nil || movingClip != nil { gestureCancelled = true }
                 trimDraft = nil; movingClip = nil; moveDraft = nil
+                timelineScroll.cancel()
             }
         }
         .onChange(of: store.project) { _, _ in
             if trimDraft != nil || movingClip != nil { gestureCancelled = true }
             trimDraft = nil; movingClip = nil; moveDraft = nil
+            timelineScroll.cancel()
         }
+        .onChange(of: timelineScroll.offset) { _, _ in refreshTimelineDrag() }
+        .onChange(of: zoom) { _, _ in cancelTimelineDrag() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in cancelTimelineDrag() }
     }
     private var header: some View {
         HStack(spacing: 12) {
@@ -317,7 +324,7 @@ struct EditorView: View {
                 let available = max(200, geometry.size.width - 190)
                 let duration = max(0, store.project.duration)
                 let scale = 50 * zoom
-                let width = max(available, duration * scale)
+                let width = max(available, max(duration * scale, timelineScroll.requiredWidth) + available * 0.5)
                 let contentHeight = max(geometry.size.height, CGFloat(36 + visualLanes.count * 76 + activeAudioLanes.count * 60))
                 ScrollView(.vertical) {
                 HStack(alignment: .top, spacing: 0) {
@@ -348,7 +355,7 @@ struct EditorView: View {
                                 }.frame(width: width, height: 68, alignment: .topLeading)
                                     .zIndex(store.project.clips.contains { $0.lane == lane && $0.id == movingClip } ? 10 : 0)
                             }
-                            ForEach(activeAudioLanes, id: \.self) { lane in AudioTimelineLane(store: store, lane: lane, scale: scale) }
+                            ForEach(activeAudioLanes, id: \.self) { lane in AudioTimelineLane(store: store, lane: lane, scale: scale, scrolling: timelineScroll) }
                             if store.project.clips.isEmpty && store.project.audioClips.isEmpty {
                                 Text("Drop media to start").font(.system(size: 12)).foregroundStyle(.tertiary).padding(24)
                             }
@@ -356,14 +363,16 @@ struct EditorView: View {
                         }.frame(width: width, alignment: .leading)
                             .frame(minHeight: contentHeight, alignment: .topLeading)
                             .coordinateSpace(name: "timeline")
+                            .background(TimelineScrollProbe(controller: timelineScroll))
                             .overlay(alignment: .topLeading) {
                                 Rectangle().fill(accent).frame(width: 1, height: contentHeight)
                                     .overlay(alignment: .top) { Image(systemName: "arrowtriangle.down.fill").font(.system(size: 9)).foregroundStyle(accent) }
                                     .offset(x: CGFloat(Double(store.playheadFrame) / 30.0 * Double(scale))).allowsHitTesting(false)
                             }
-                    }
+                    }.coordinateSpace(name: "timelineViewport")
                 }
                 }
+                .onChange(of: geometry.size) { _, _ in cancelTimelineDrag() }
             }
             HStack {
                 if let trimDraft {
@@ -377,10 +386,8 @@ struct EditorView: View {
             }.font(.system(size: 10)).foregroundStyle(.secondary).padding(.horizontal, 16).frame(height: 25)
         }.background(Color(white: 26.0 / 255))
             .dropDestination(for: URL.self) { urls, _ in importDrop(urls, add: true) }
-            .onExitCommand {
-                if trimDraft != nil || movingClip != nil { gestureCancelled = true }
-                trimDraft = nil; movingClip = nil; moveDraft = nil
-            }
+            .onExitCommand(perform: cancelTimelineDrag)
+            .onDisappear(perform: cancelTimelineDrag)
     }
     private func timelineRuler(width: CGFloat, duration: Double) -> some View {
         Canvas { context, size in
@@ -409,35 +416,34 @@ struct EditorView: View {
                          media: try? store.project.asset(for: clip), width: CGFloat(clip.duration * scale), selected: store.selectedClip == clip.id,
                          moving: movingClip == clip.id, draft: trimDraft?.clip.id == clip.id ? trimDraft : nil,
                          select: { store.selectClip(clip) },
+                         begin: { gestureCancelled = false }, cancel: cancelTimelineDrag,
                          move: { horizontal, vertical, ended in
-            if ended && gestureCancelled { gestureCancelled = false; return }
+            if ended && gestureCancelled { gestureCancelled = false; timelineScroll.end(clip.id); return }
             guard !store.busy, !gestureCancelled else { return }
-            let start = store.project.position(of: clip)
-            let raw = max(0, min(30_000_000, start + TimelineSnapping.frameDelta(points: horizontal, pointsPerSecond: scale)))
-            let frame = max(0, store.snapTimelineFrame(raw, excluding: clip.id, scale: scale))
-            let lane = min(store.project.visualTrackCount - 1, max(0, clip.lane - Int((vertical / 76).rounded())))
-            if ended {
-                movingClip = nil; moveDraft = nil
-                store.placeVisual(clip.id, at: frame, lane: lane)
-            } else {
-                if movingClip == nil { store.player?.pause(); store.selectClip(clip) }
-                movingClip = clip.id; trimDraft = nil
-                moveDraft = VisualMoveDraft(frame: frame, lane: lane)
+            if !ended, movingClip == nil {
+                store.player?.pause(); store.selectClip(clip); timelineScroll.begin(clip.id)
             }
+            dragTranslation = CGSize(width: horizontal, height: vertical)
+            updateMoveDraft(clip, scale: scale)
+            if ended {
+                let draft = moveDraft
+                movingClip = nil; moveDraft = nil
+                if let draft { store.placeVisual(clip.id, at: draft.frame, lane: draft.lane) }
+                timelineScroll.end(clip.id)
+            } else { movingClip = clip.id; trimDraft = nil }
         }, trim: { edge, points, ended in
             guard !store.busy else { return }
             if ended {
-                defer { gestureCancelled = false }
-                guard !gestureCancelled, let draft = trimDraft, draft.clip.id == clip.id else { return }
+                defer { gestureCancelled = false; timelineScroll.end(clip.id) }
+                guard !gestureCancelled, trimDraft?.clip.id == clip.id else { return }
+                let distance = timelineScroll.distance(points)
                 trimDraft = nil
-                store.trimVisual(clip.id, edge: edge, delta: trimDragDelta(clip, edge: edge, points: points, scale: scale))
+                store.trimVisual(clip.id, edge: edge, delta: trimDragDelta(clip, edge: edge, points: distance, scale: scale))
             } else {
                 guard !gestureCancelled else { return }
-                if trimDraft == nil { store.player?.pause(); store.selectClip(clip) }
-                let delta = trimDragDelta(clip, edge: edge, points: points, scale: scale)
-                guard let candidate = try? store.project.trimmedClip(clip.id, edge: edge, delta: delta) else { return }
-                let effective = edge == .start ? candidate.inFrame - clip.inFrame : candidate.outFrame - clip.outFrame
-                trimDraft = TimelineTrimDraft(clip: candidate, edge: edge, offset: CGFloat(Double(effective) / 30 * scale))
+                if trimDraft == nil { store.player?.pause(); store.selectClip(clip); timelineScroll.begin(clip.id) }
+                dragTranslation = CGSize(width: points, height: 0)
+                updateTrimDraft(clip, edge: edge, scale: scale)
                 movingClip = nil; moveDraft = nil
             }
         })
@@ -450,6 +456,34 @@ struct EditorView: View {
             Button("Move to beginning") { store.placeVisual(clip.id, at: 0, lane: clip.lane) }.disabled(store.busy)
             Button("Move to end") { store.placeVisual(clip.id, at: store.project.videoFrames, lane: clip.lane) }.disabled(store.busy)
         }
+    }
+    private func updateMoveDraft(_ clip: Clip, scale: Double) {
+        let delta = TimelineSnapping.frameDelta(points: timelineScroll.distance(dragTranslation.width), pointsPerSecond: scale)
+        let raw = max(0, min(30_000_000, store.project.position(of: clip) + delta))
+        let frame = max(0, store.snapTimelineFrame(raw, excluding: clip.id, scale: scale))
+        let lane = min(store.project.visualTrackCount - 1, max(0, clip.lane - Int((dragTranslation.height / 76).rounded())))
+        moveDraft = VisualMoveDraft(frame: frame, lane: lane)
+        timelineScroll.extend(to: Double(frame + clip.frames) / 30 * scale)
+    }
+    private func updateTrimDraft(_ clip: Clip, edge: TrimEdge, scale: Double) {
+        let delta = trimDragDelta(clip, edge: edge, points: timelineScroll.distance(dragTranslation.width), scale: scale)
+        guard let candidate = try? store.project.trimmedClip(clip.id, edge: edge, delta: delta) else { return }
+        let effective = edge == .start ? candidate.inFrame - clip.inFrame : candidate.outFrame - clip.outFrame
+        trimDraft = TimelineTrimDraft(clip: candidate, edge: edge, offset: CGFloat(Double(effective) / 30 * scale))
+        timelineScroll.extend(to: Double(store.project.position(of: clip) + clip.frames + (edge == .end ? effective : 0)) / 30 * scale)
+    }
+    private func refreshTimelineDrag() {
+        guard !gestureCancelled, !store.busy else { return }
+        if let id = movingClip, let clip = store.project.clips.first(where: { $0.id == id }) {
+            updateMoveDraft(clip, scale: 50 * zoom)
+        } else if let draft = trimDraft, let clip = store.project.clips.first(where: { $0.id == draft.clip.id }) {
+            updateTrimDraft(clip, edge: draft.edge, scale: 50 * zoom)
+        }
+    }
+    private func cancelTimelineDrag() {
+        if trimDraft != nil || movingClip != nil { gestureCancelled = true }
+        trimDraft = nil; movingClip = nil; moveDraft = nil
+        timelineScroll.cancel()
     }
     private var footer: some View {
         HStack(spacing: 14) {
