@@ -36,6 +36,12 @@ public struct MediaAsset: Codable, Equatable, Identifiable, Sendable {
 
 /// All clip times are integral frames in the project's fixed 30 fps timebase.
 public struct Clip: Codable, Equatable, Identifiable, Sendable {
+    public var fadeInFrames: Int64 = 0
+    public var fadeOutFrames: Int64 = 0
+    public var fadeSourceInFrame: Int64?
+    public var fadeSourceOutFrame: Int64?
+    public var dissolveFrames: Int64 = 0
+    public var dissolveFrom: UUID?
     public var opacity: Double = 1
     public var imageTransparency = true
     public var transform = VisualTransform()
@@ -52,7 +58,7 @@ public struct Clip: Codable, Equatable, Identifiable, Sendable {
     public init(id: UUID = UUID(), assetID: UUID, inFrame: Int64, outFrame: Int64, muted: Bool = false, startFrame: Int64? = nil, lane: Int = 0, transform: VisualTransform = VisualTransform(), opacity: Double = 1, imageTransparency: Bool = true) {
         self.id = id; self.assetID = assetID; self.inFrame = inFrame; self.outFrame = outFrame; self.muted = muted; self.startFrame = startFrame; self.lane = lane; self.transform = transform; self.opacity = opacity; self.imageTransparency = imageTransparency
     }
-    private enum CodingKeys: String, CodingKey { case id, assetID, inFrame, outFrame, muted, startFrame, lane, transform, opacity, imageTransparency }
+    private enum CodingKeys: String, CodingKey { case id, assetID, inFrame, outFrame, muted, startFrame, lane, transform, opacity, imageTransparency, fadeInFrames, fadeOutFrames, fadeSourceInFrame, fadeSourceOutFrame, dissolveFrames, dissolveFrom }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(UUID.self, forKey: .id); assetID = try values.decode(UUID.self, forKey: .assetID)
@@ -60,6 +66,12 @@ public struct Clip: Codable, Equatable, Identifiable, Sendable {
         muted = try values.decodeIfPresent(Bool.self, forKey: .muted) ?? false
         startFrame = try values.decodeIfPresent(Int64.self, forKey: .startFrame)
         lane = try values.decodeIfPresent(Int.self, forKey: .lane) ?? 0
+        fadeInFrames = try values.decodeIfPresent(Int64.self, forKey: .fadeInFrames) ?? 0
+        fadeOutFrames = try values.decodeIfPresent(Int64.self, forKey: .fadeOutFrames) ?? 0
+        fadeSourceInFrame = try values.decodeIfPresent(Int64.self, forKey: .fadeSourceInFrame)
+        fadeSourceOutFrame = try values.decodeIfPresent(Int64.self, forKey: .fadeSourceOutFrame)
+        dissolveFrames = try values.decodeIfPresent(Int64.self, forKey: .dissolveFrames) ?? 0
+        dissolveFrom = try values.decodeIfPresent(UUID.self, forKey: .dissolveFrom)
         opacity = try values.decodeIfPresent(Double.self, forKey: .opacity) ?? 1
         // Missing in versions 1–5: preserve their opaque fitted image canvas.
         imageTransparency = try values.decodeIfPresent(Bool.self, forKey: .imageTransparency) ?? false
@@ -104,7 +116,7 @@ public struct AudioClip: Codable, Equatable, Identifiable, Sendable {
 }
 
 public struct VideoProject: Codable, Equatable, Sendable {
-    public var version = 8
+    public var version = 9
     public var visualTrackCount = 1
     public var name = "Untitled edit"
     public var width = 1280
@@ -118,8 +130,8 @@ public struct VideoProject: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let storedVersion = try values.decode(Int.self, forKey: .version)
-        guard (1...8).contains(storedVersion) else { throw EditorError("Unsupported project version: \(storedVersion).") }
-        version = 8
+        guard (1...9).contains(storedVersion) else { throw EditorError("Unsupported project version: \(storedVersion).") }
+        version = 9
         name = try values.decode(String.self, forKey: .name)
         width = try values.decode(Int.self, forKey: .width); height = try values.decode(Int.self, forKey: .height)
         assets = try values.decode([MediaAsset].self, forKey: .assets)
@@ -153,7 +165,7 @@ public struct VideoProject: Codable, Equatable, Sendable {
         return asset
     }
     public func validate(requireMedia: Bool = false) throws {
-        guard version == 8 else { throw EditorError("Unsupported project version: \(version).") }
+        guard version == 9 else { throw EditorError("Unsupported project version: \(version).") }
         guard width >= 2, height >= 2, width <= 16384, height <= 16384,
               width % 2 == 0, height % 2 == 0 else {
             throw EditorError("Output dimensions must be even numbers between 2 and 16384.")
@@ -179,9 +191,10 @@ public struct VideoProject: Codable, Equatable, Sendable {
                 throw EditorError("A trim is outside the source: \(media.name). Use at least one frame.")
             }
         }
+        try validateDissolves()
         for lane in 0..<visualTrackCount {
             let ordered = clips.filter { $0.lane == lane }.sorted { position(of: $0) < position(of: $1) }
-            for pair in zip(ordered, ordered.dropFirst()) where position(of: pair.0) + pair.0.frames > position(of: pair.1) {
+            for pair in zip(ordered, ordered.dropFirst()) where position(of: pair.0) + pair.0.frames > position(of: pair.1) && !permitsOverlap(pair.0, pair.1) {
                 throw EditorError("Visual clips overlap on the same track. Choose another track.")
             }
         }
@@ -230,8 +243,22 @@ public struct VideoProject: Codable, Equatable, Sendable {
         guard let index = clips.firstIndex(where: { $0.id == id }) else { return }
         let clip = clips[index]
         guard frame > 0, frame < clip.frames else { throw EditorError("Split must be inside the clip.") }
-        clips[index].outFrame = clip.inFrame + frame
-        clips.insert(Clip(assetID: clip.assetID, inFrame: clip.inFrame + frame, outFrame: clip.outFrame, muted: clip.muted, startFrame: clip.startFrame.map { $0 + frame }, lane: clip.lane, transform: clip.transform, opacity: clip.opacity, imageTransparency: clip.imageTransparency), at: index + 1)
+        let cut = position(of: clip) + frame
+        for incoming in clips where incoming.dissolveFrames > 0 {
+            let start = position(of: incoming)
+            if cut > start && cut < start + incoming.dissolveFrames && (incoming.id == id || incoming.dissolveFrom == id) {
+                throw EditorError("Split outside the dissolve, or remove it first.")
+            }
+        }
+        var first = clip, second = clip
+        first.fadeSourceInFrame = clip.fadeStart; first.fadeSourceOutFrame = clip.fadeEnd
+        second.fadeSourceInFrame = clip.fadeStart; second.fadeSourceOutFrame = clip.fadeEnd
+        first.outFrame = clip.inFrame + frame
+        second.id = UUID(); second.inFrame = first.outFrame; second.startFrame = clip.startFrame.map { $0 + frame }
+        second.dissolveFrom = nil; second.dissolveFrames = 0
+        var next = self; next.clips[index] = first; next.clips.insert(second, at: index + 1)
+        for i in next.clips.indices where next.clips[i].dissolveFrom == id { next.clips[i].dissolveFrom = second.id }
+        try next.validate(); self = next
     }
 }
 

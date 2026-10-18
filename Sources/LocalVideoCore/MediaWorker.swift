@@ -118,19 +118,50 @@ public enum VideoRenderer {
             let spatial = transform == VisualTransform() ? "" : "scale=w=\'max(2,round(iw*\(number(transform.scale))))\':h=\'max(2,round(ih*\(number(transform.scale))))\',rotate=\(radians):ow=rotw(\(radians)):oh=roth(\(radians)):c=none,"
             let imageCanvas = asset.isImage ? "pad=\(project.width):\(project.height):(ow-iw)/2:(oh-ih)/2:color=black@0," : ""
             let imageAlpha = "format=rgba,"
-            filters.append("[\(index):\(asset.videoStream)]setpts=PTS-STARTPTS,\(imageAlpha)scale=\(project.width):\(project.height):force_original_aspect_ratio=decrease:force_divisible_by=2,\(imageCanvas)setsar=1,fps=30,tpad=stop_mode=clone:stop_duration=1,trim=end_frame=\(clip.frames),setpts=N/(30*TB)+\(seconds(project.position(of: clip)))/TB,format=rgba,\(spatial)colorchannelmixer=aa=\(number(clip.opacity))[v\(index)]")
+            var envelope = "1"
+            if clip.fadeInFrames > 0 { envelope += "*min(1,max(0,(T*30+\(clip.inFrame - clip.fadeStart))/\(clip.fadeInFrames)))" }
+            if clip.fadeOutFrames > 0 { envelope += "*min(1,max(0,(\(clip.fadeEnd - clip.inFrame)-T*30)/\(clip.fadeOutFrames)))" }
+            var dissolve = "1"
+            if clip.dissolveFrames > 0 { dissolve += "*min(1,max(0,T*30/\(clip.dissolveFrames)))" }
+            let outgoing = project.outgoingDissolve(clip.id)
+            if outgoing > 0 { dissolve += "*min(1,max(0,(\(clip.frames)-T*30)/\(outgoing)))" }
+            let animation = envelope == "1" && dissolve == "1" ? "" : ",format=gbrap,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='alpha(X,Y)*\(envelope)*\(dissolve)'"
+            let input = "[\(index):\(asset.videoStream)]setpts=PTS-STARTPTS,\(imageAlpha)scale=\(project.width):\(project.height):force_original_aspect_ratio=decrease:force_divisible_by=2,\(imageCanvas)setsar=1,fps=30,tpad=stop_mode=clone:stop_duration=1,trim=end_frame=\(clip.frames),setpts=N/(30*TB),format=rgba,\(spatial)colorchannelmixer=aa=\(number(clip.opacity))\(animation)"
+            if project.hasDissolves {
+                filters.append(input + "[raw\(index)]")
+                filters.append("color=c=black@0:s=\(project.width)x\(project.height):r=30:d=\(duration),format=rgba[clear\(index)]")
+                filters.append("[clear\(index)][raw\(index)]overlay=x='(W-w)/2+\(number(transform.x))':y='(H-h)/2+\(number(transform.y))':format=auto:shortest=1,format=gbrap,premultiply=inplace=1,tpad=start_duration=\(seconds(project.position(of: clip))):stop_duration=\(length):color=black@0,trim=end_frame=\(project.totalFrames),setpts=N/(30*TB)[v\(index)]")
+            } else { filters.append(input + ",setpts=PTS+\(seconds(project.position(of: clip)))/TB[v\(index)]") }
             if let stream = asset.audioStream {
                 let gain = clip.muted ? 0 : project.videoVolume
-                filters.append("[\(index):\(stream)]aresample=48000:async=1:first_pts=0,aformat=sample_fmts=fltp:channel_layouts=stereo,apad,atrim=duration=\(duration),asetpts=N/SR/TB,volume=\(gain),adelay=\(project.position(of: clip) * 1600)S:all=1[va\(index)]")
+                let expression = dissolve.replacingOccurrences(of: "T", with: "t")
+                let audioFade = dissolve == "1" ? "" : "aeval=exprs='val(0)*\(expression)|val(1)*\(expression)',"
+                filters.append("[\(index):\(stream)]aresample=48000:async=1:first_pts=0,aformat=sample_fmts=fltp:channel_layouts=stereo,apad,atrim=duration=\(duration),asetpts=N/SR/TB,volume=\(gain),\(audioFade)adelay=\(project.position(of: clip) * 1600)S:all=1[va\(index)]")
                 audioInputs.append("[va\(index)]")
             }
         }
         let ordered = project.clips.indices.sorted { project.clips[$0].lane < project.clips[$1].lane }
-        for (stage, index) in ordered.enumerated() {
-            let clip = project.clips[index], start = project.position(of: project.clips[index])
-            filters.append("[base\(stage)][v\(index)]overlay=x='(W-w)/2+\(number(clip.transform.x))':y='(H-h)/2+\(number(clip.transform.y))':format=rgb:eof_action=pass:repeatlast=0:enable='gte(t,\(seconds(start)))*lt(t,\(seconds(start + clip.frames)))'[base\(stage + 1)]")
+        var stages = 0
+        if project.hasDissolves {
+            for lane in Set(project.clips.map(\.lane)).sorted() {
+                let entries = ordered.filter { project.clips[$0].lane == lane }
+                var input = "v\(entries[0])"
+                for index in entries.dropFirst() {
+                    let next = "sum\(lane)_\(index)"
+                    filters.append("[\(input)][v\(index)]blend=all_mode=addition:shortest=1[\(next)]"); input = next
+                }
+                filters.append("[\(input)]unpremultiply=inplace=1,format=rgba[lane\(lane)]")
+                filters.append("[base\(stages)][lane\(lane)]overlay=0:0:format=rgb:eof_action=pass:repeatlast=0[base\(stages + 1)]")
+                stages += 1
+            }
+        } else {
+            for index in ordered {
+                let clip = project.clips[index], start = project.position(of: project.clips[index])
+                filters.append("[base\(stages)][v\(index)]overlay=x='(W-w)/2+\(number(clip.transform.x))':y='(H-h)/2+\(number(clip.transform.y))':format=rgb:eof_action=pass:repeatlast=0:enable='gte(t,\(seconds(start)))*lt(t,\(seconds(start + clip.frames)))'[base\(stages + 1)]")
+                stages += 1
+            }
         }
-        filters.append("[base\(ordered.count)]trim=end_frame=\(project.totalFrames),setpts=N/(30*TB),scale=out_color_matrix=bt709,format=yuv420p,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709[v]")
+        filters.append("[base\(stages)]trim=end_frame=\(project.totalFrames),setpts=N/(30*TB),scale=out_color_matrix=bt709,format=yuv420p,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709[v]")
         filters.append("anullsrc=r=48000:cl=stereo,atrim=duration=\(length)[silence]")
         audioInputs.append("[silence]")
         for (offset, clip) in project.audioClips.enumerated() {

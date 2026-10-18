@@ -19,6 +19,7 @@ extension VideoProject {
             let maximum = source.isImage ? 29_999_999 : Int64(floor(source.duration * 30 + 0.0001))
             clip.outFrame += min(max(delta, 1 - clip.frames), maximum - clip.outFrame)
         }
+        clip.fitVisualFades()
         return clip
     }
 

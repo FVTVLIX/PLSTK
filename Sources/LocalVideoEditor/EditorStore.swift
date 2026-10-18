@@ -272,11 +272,12 @@ import UniformTypeIdentifiers
     func removeClip() {
         if selectedAudio != nil { removeAudio(); return }
         guard let id = selectedClip else { return }
-        change { $0.clips.removeAll { $0.id == id } }; selectedClip = nil
+        change { $0.removeVisual(id) }; selectedClip = nil
     }
     func duplicateClip() {
         guard var copy = clip else { return }
         copy.startFrame = project.position(of: copy); copy.id = UUID()
+        copy.dissolveFrom = nil; copy.dissolveFrames = 0
         change { project in
             copy.lane = try project.availableVisualLane(at: copy.startFrame!, frames: copy.frames)
             project.clips.append(copy)
@@ -307,6 +308,7 @@ import UniformTypeIdentifiers
             guard let i = project.clips.firstIndex(where: { $0.id == selectedClip }) else { return }
             project.clips[i].inFrame = Int64((start * 30).rounded())
             project.clips[i].outFrame = Int64((end * 30).rounded())
+            project.clips[i].fitVisualFades()
         }
     }
     func importMedia() {

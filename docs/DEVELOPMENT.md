@@ -56,3 +56,13 @@ Timeline gestures use a stationary viewport coordinate space. Add the scroll off
 The editor tests exercise native NSScrollView behavior and an isolated SwiftUI hierarchy with nested horizontal and vertical scroll views. Coverage includes scrolling bounds, progressive speed, elapsed time limits, cancellation, and starting a drag after scrolling. The app check also verifies ordinary scrolling and zoom through accessibility controls.
 
 Physical pointer drag automation on the current verification display reports `windowNotFoundAtPosition`. The release checks therefore distinguish native component tests from a completed physical edge drag. Recheck visual move, trim, and audio move with a pointer when a compatible display is available.
+
+## Visual transition rendering
+
+Visual fades use source anchored envelopes so splitting a fade preserves its original shape. A dissolve belongs to the incoming clip and identifies its predecessor. Validation permits only the declared overlap on the same track and rejects overlapping blends that would involve three clips. Dissolve edits shift later clips on that track by the duration change. Moving or trimming a linked cut requires removing the dissolve first.
+
+Preview projects with transitions use a Core Image video compositor. Apply envelope gain to alpha once, sum premultiplied source pixels within each track, then composite the tracks. Fading two independent layers over each other produces a dark dip. Core Image color matrix filters operate on unpremultiplied values, so multiplying color and alpha together applies the gain twice. The context uses an explicit sRGB working and output space.
+
+FFmpeg export applies the same envelopes. For dissolves it prepares canvas sized premultiplied streams, adds them within a track, and composites tracks over black. Embedded audio uses complementary linear ramps. Visual fades alone do not affect sound. Independent audio keeps its existing placement and envelope.
+
+Verify decoded frames at transition boundaries and midpoints, across split fades, and with layered images, transparent titles, opacity, and transforms. Check sound against an AVFoundation audio mix export, and exercise save, migration, recovery, and invalid linked edits. Format 9 requires migration defaults for older projects. Export with dissolves prepares full duration streams for each visual clip; performance on large projects remains an area for improvement.

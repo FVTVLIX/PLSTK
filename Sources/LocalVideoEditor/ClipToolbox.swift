@@ -19,7 +19,7 @@ struct ClipToolbox: View {
     }
     private var tools: [ClipTool] {
         if audio != nil { return [.sound, .fades, .trim, .arrange] }
-        var items: [ClipTool] = [.size, .rotate, .appearance, media?.isImage == true ? .duration : .trim]
+        var items: [ClipTool] = [.size, .rotate, .appearance, .transitions, media?.isImage == true ? .duration : .trim]
         if media?.isTitle == true { items.insert(.text, at: 0) }
         if media?.audioStream != nil { items.append(.sound) }
         items.append(.arrange)
@@ -66,7 +66,7 @@ struct ClipToolbox: View {
                         controls(tool)
                         Button { precise = true } label: { Label("Fine tune", systemImage: "slider.horizontal.3").font(.system(size: 11)) }
                             .buttonStyle(.plain).foregroundStyle(.secondary)
-                            .popover(isPresented: $precise) {
+                            .popover(isPresented: $precise, arrowEdge: .leading) {
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 16) {
                                         HStack {
@@ -98,6 +98,8 @@ struct ClipToolbox: View {
     }
     @ViewBuilder private func controls(_ tool: ClipTool) -> some View {
         switch tool {
+        case .transitions:
+            if let visual { VisualTransitionControls(store: store, clipID: visual.id) }
         case .text:
             if let visual { TitleContentControls(store: store, clipID: visual.id) }
         case .size:
@@ -193,6 +195,7 @@ struct ClipToolbox: View {
             AudioClipInspector(store: store, section: tool == .sound ? .sound : (tool == .fades ? .fades : (tool == .trim ? .trim : .arrange)))
         } else if let visual, let media {
             switch tool {
+            case .transitions: VisualTransitionPrecision(store: store, clipID: visual.id)
             case .text: TitleTypographyControls(store: store, clipID: visual.id)
             case .size, .rotate: VisualTransformView(store: store, clip: visual)
             case .appearance: VisualAppearanceView(store: store, clip: visual, isImage: media.isImage && !media.isTitle)
@@ -254,10 +257,11 @@ struct ClipToolbox: View {
 }
 
 private enum ClipTool: String, Identifiable {
-    case text, size, rotate, appearance, trim, duration, sound, fades, arrange
+    case transitions, text, size, rotate, appearance, trim, duration, sound, fades, arrange
     var id: Self { self }
     var title: String {
         switch self {
+        case .transitions: return "Transitions"
         case .text: return "Text & style"
         case .size: return "Size & position"
         case .rotate: return "Rotate"
@@ -271,6 +275,7 @@ private enum ClipTool: String, Identifiable {
     }
     var symbol: String {
         switch self {
+        case .transitions: return "rectangle.on.rectangle"
         case .text: return "textformat"
         case .size: return "arrow.up.left.and.arrow.down.right"
         case .rotate: return "rotate.right"

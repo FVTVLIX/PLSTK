@@ -46,6 +46,9 @@ struct TimelineClipCell: View {
     private var clipBody: some View {
         VStack(spacing: 0) {
             HStack(spacing: 5) {
+                if clip.fadeInFrames > 0 || clip.fadeOutFrames > 0 || clip.dissolveFrames > 0 {
+                    Image(systemName: "circle.lefthalf.filled").font(.system(size: 9)).help("Visual transition")
+                }
                 Text(title).font(.system(size: 9, weight: .medium)).lineLimit(1)
                 Spacer(minLength: 0)
                 Text(String(format: "%.2fs", draft?.clip.duration ?? clip.duration))

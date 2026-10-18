@@ -40,7 +40,7 @@ final class StillImageTests: XCTestCase {
         var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(legacy)) as! [String: Any]
         json["version"] = 2
         let decoded = try JSONDecoder().decode(VideoProject.self, from: JSONSerialization.data(withJSONObject: json))
-        XCTAssertEqual(decoded.version, 8); XCTAssertFalse(decoded.assets[0].isImage)
+        XCTAssertEqual(decoded.version, 9); XCTAssertFalse(decoded.assets[0].isImage)
     }
     func testStillThumbnailAndInvalidImage() async throws {
         let media = try image()

@@ -103,9 +103,9 @@ struct EditorView: View {
             let sources = Set(store.project.assets.compactMap { try? MediaVisualSource($0) })
             await MediaVisualCache.shared.retainSources(sources)
         }
-        .onChange(of: store.selectedClip) { _, id in editingTitle = false; store.cancelCanvasTransform(); if id != nil { showLeft = true; showClipTools = true } }
-        .onChange(of: store.selectedAudio) { _, id in if id != nil { showLeft = true; showClipTools = true } }
-        .onChange(of: store.selectionRevision) { _, _ in showClipTools = true; showLeft = true }
+        .onChange(of: store.selectedClip) { _, id in editingTitle = false; store.cancelCanvasTransform(); if id != nil { showLeft = true; if activeTool != "Transitions" { showClipTools = true } } }
+        .onChange(of: store.selectedAudio) { _, id in if id != nil { showLeft = true; if activeTool != "Transitions" { showClipTools = true } } }
+        .onChange(of: store.selectionRevision) { _, _ in if activeTool != "Transitions" { showClipTools = true }; showLeft = true }
         .onChange(of: store.busy) { _, busy in
             if busy {
                 if trimDraft != nil || movingClip != nil { gestureCancelled = true }
@@ -179,6 +179,7 @@ struct EditorView: View {
             } else if activeTool == "Layout" {
                 ProjectCanvasPanel(store: store)
             } else if activeTool == "Text" { TitlesPanel(store: store) }
+            else if activeTool == "Transitions" { TransitionsPanel(store: store) }
             else if activeTool == "Audio" { audioPanel }
             else { library }
         }.frame(maxHeight: .infinity).background(panel)

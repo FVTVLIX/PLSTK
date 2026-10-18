@@ -37,7 +37,7 @@ final class TextTitleTests: XCTestCase {
         var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(project())) as! [String: Any]
         json["version"] = 7
         let legacy = try JSONDecoder().decode(VideoProject.self, from: JSONSerialization.data(withJSONObject: json))
-        XCTAssertEqual(legacy.version, 8); XCTAssertTrue(legacy.assets.isEmpty)
+        XCTAssertEqual(legacy.version, 9); XCTAssertTrue(legacy.assets.isEmpty)
     }
     func testTitleInsertionAlwaysSitsAboveOverlappingVisualsAndIsAtomicWhenFull() throws {
         var p = project()

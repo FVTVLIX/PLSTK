@@ -32,7 +32,7 @@ The clip stays with the pointer as the timeline scrolls. Snapping and source lim
 
 ### Work visually
 
-Select a clip to open its toolbox. Use Size & position, Rotate, Opacity, Trim & split, Sound, and Arrange as appropriate for the selected media.
+Select a clip to open its toolbox. Use Size & position, Rotate, Opacity, Transitions, Trim & split, Sound, and Arrange as appropriate for the selected media.
 
 Drag a clip in the viewer to reposition it. Pull a corner to resize it, or use its circular handle to rotate it. Fit, Inset, Centre, and rotation buttons provide quick starting points.
 
@@ -49,6 +49,14 @@ Use Edit text in the viewer to change the wording without returning to the sideb
 Titles are editable content stored inside the project. No generated image or separate font file needs to travel with the edit. You can trim, split, duplicate, move, or adjust the opacity of a title. Split parts and duplicates can be edited independently. A title can also form a standalone card on a black background.
 
 The Caption preset is a manual text style with a contrasting plate. Automatic transcription and timed caption generation are still planned. Titles currently use system typography, three color choices, and up to eight lines. Long text wraps and shrinks to fit.
+
+### Blend scenes
+
+Select a visual clip and open Transitions. Fade in and Fade out work with footage, images, and titles. Off, Short, Medium, and Long presets keep ordinary edits simple. Fine tune provides exact durations in seconds.
+
+To dissolve between scenes, place two clips directly next to each other on the same visual track. Select the second clip and choose Dissolve from previous. The clips overlap for the chosen duration, blending their picture and embedded sound. Following clips on that track move earlier; other tracks and independent audio stay in place. Removing the dissolve restores the space.
+
+Remove a dissolve before moving or trimming its cut. Splitting outside the blended section keeps the link intact. Visual fades alone leave the clip's sound unchanged, and a fade stays continuous when split. All transition changes support undo, save, and recovery.
 
 ### Shape the sound
 
@@ -121,7 +129,7 @@ Recovered edits open as unsaved projects. Saving asks for a destination and sugg
 
 Recovery copies stay in the local Application Support folder for PLSTK. Copies belonging to another running editor are left alone. If a copy cannot be read, it stays on disk. A warning appears if recovery becomes unavailable, with options to retry or show the recovery folder.
 
-The current project format is version 8. Earlier versions open with migration defaults that preserve their existing timing and visual settings. Older app versions may not open projects saved by newer versions.
+The current project format is version 9. Earlier versions open with migration defaults that preserve their existing timing and visual settings. Older app versions may not open projects saved by newer versions.
 
 ## Keyboard shortcuts
 
@@ -146,7 +154,7 @@ The current project format is version 8. Earlier versions open with migration de
 
 ## Current limits
 
-Automatic captions, transitions, effects, keyframes, and a connected editing assistant are still planned. Their interface entries are disabled where implementation is incomplete.
+Automatic captions, effects, keyframes, and a connected editing assistant are still planned. Their interface entries are disabled where implementation is incomplete.
 
 The current rendering workflow handles SDR output. Full HDR and color management, every codec combination, and all variable frame rate inputs have not been verified. macOS codec support determines what can play in the live preview.
 
@@ -163,7 +171,7 @@ swift test
 python3 scripts/smoke-test.py
 ```
 
-The current suite contains 63 tests. Coverage includes project migration, save and load, editing operations, transforms, layered visuals, image transparency, audio mixing, fade continuity, editable titles, project recovery, timeline navigation, and decoded comparisons between preview and export.
+The current suite contains 70 tests. Coverage includes project migration, save and load, editing operations, transforms, layered visuals, image transparency, audio mixing, fade continuity, visual transitions, editable titles, project recovery, timeline navigation, and decoded comparisons between preview and export.
 
 The smoke test generates synthetic footage under `TestOutput/` and checks timing, cut boundaries, silent clips, delayed audio, rotation, variable frame rate handling, and export cancellation. Generated media and local project files are excluded from Git.
 

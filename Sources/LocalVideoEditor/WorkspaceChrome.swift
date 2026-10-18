@@ -17,7 +17,7 @@ struct WorkspaceRail: View {
     private let tools: [(String, String, Bool)] = [
         ("Library", "folder", true), ("Layout", "square.grid.2x2", true),
         ("Audio", "music.note", true), ("Captions", "captions.bubble", false),
-        ("Text", "textformat", true), ("Transitions", "circle.lefthalf.filled", false),
+        ("Text", "textformat", true), ("Transitions", "circle.lefthalf.filled", true),
         ("Effects", "wand.and.stars", false)
     ]
     var body: some View {

@@ -31,13 +31,14 @@ public struct TimelinePreview {
         let composition = AVMutableComposition()
         var visualTracks: [UUID: (CMPersistentTrackID, CGAffineTransform, Float)] = [:]
         var instructions: [AVVideoCompositionInstructionProtocol] = []
+        var compositingLayers: [VisualCompositionLayer] = []
         var layers: [(Clip, AVMutableVideoCompositionLayerInstruction)] = []
         var audioParameters: [AVAudioMixInputParameters] = []
         for clip in project.clips {
             try Task.checkCancellation()
             let cursor = CMTime(value: project.position(of: clip), timescale: 30)
             let media = try project.asset(for: clip)
-            let url = media.isImage ? try await StillImage.movie(media, frames: clip.frames, width: project.width, height: project.height, directory: resources.directory, preserveAlpha: clip.imageTransparency, opacity: clip.opacity) : URL(fileURLWithPath: media.path)
+            let url = media.isImage ? try await StillImage.movie(media, frames: clip.frames, width: project.width, height: project.height, directory: resources.directory, preserveAlpha: clip.imageTransparency, opacity: project.hasVisualTransitions ? 1 : clip.opacity) : URL(fileURLWithPath: media.path)
             let source = AVURLAsset(url: url)
             guard let video = try await source.loadTracks(withMediaType: .video).first,
                   let destination = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else {
@@ -65,6 +66,8 @@ public struct TimelinePreview {
             visualTracks[clip.id] = (destination.trackID, fitTransform(size: naturalSize, preferred: preferred, output: CGSize(width: project.width, height: project.height)), layerOpacity)
             layer.setOpacity(layerOpacity, at: cursor)
             layers.append((clip, layer))
+            compositingLayers.append(VisualCompositionLayer(clip: clip, position: project.position(of: clip), track: destination.trackID,
+                fitted: fitTransform(size: naturalSize, preferred: preferred, output: CGSize(width: project.width, height: project.height)), outgoing: project.outgoingDissolve(clip.id)))
 
             if media.audioStream != nil, let audio = try await source.loadTracks(withMediaType: .audio).first {
                 // Intersect instead of resetting timestamps: delayed audio retains its source offset.
@@ -77,7 +80,14 @@ public struct TimelinePreview {
                     let audioStart = CMTimeAdd(cursor, CMTimeSubtract(overlap.start, range.start))
                     try destinationAudio.insertTimeRange(overlap, of: audio, at: audioStart)
                     let parameters = AVMutableAudioMixInputParameters(track: destinationAudio)
-                    parameters.setVolume(Float(clip.muted ? 0 : project.videoVolume), at: .zero)
+                    let gain = clip.muted ? 0 : project.videoVolume
+                    parameters.setVolume(Float(gain * project.dissolveGain(clip, at: 0)), at: .zero)
+                    let points = Set([Int64(0), clip.frames, clip.dissolveFrames, clip.frames - project.outgoingDissolve(clip.id)]).sorted()
+                    for (a, b) in zip(points, points.dropFirst()) where b > a {
+                        parameters.setVolumeRamp(fromStartVolume: Float(gain * project.dissolveGain(clip, at: Double(a))),
+                            toEndVolume: Float(gain * project.dissolveGain(clip, at: Double(b))),
+                            timeRange: CMTimeRange(start: CMTime(value: project.position(of: clip) + a, timescale: 30), duration: CMTime(value: b - a, timescale: 30)))
+                    }
                     audioParameters.append(parameters)
                 }
             }
@@ -90,7 +100,10 @@ public struct TimelinePreview {
             // Highest track first; uncovered areas reveal lower tracks.
             let active = layers.filter { project.position(of: $0.0) <= start && project.position(of: $0.0) + $0.0.frames > start }.sorted { $0.0.lane > $1.0.lane }
             instruction.layerInstructions = active.map { $0.1 }
-            instructions.append(instruction)
+            if project.hasVisualTransitions {
+                instructions.append(VisualCompositionInstruction(range: instruction.timeRange,
+                    layers: compositingLayers.filter { $0.position <= start && $0.position + $0.clip.frames > start }))
+            } else { instructions.append(instruction) }
         }
         for clip in project.audioClips {
             try Task.checkCancellation()
@@ -126,6 +139,7 @@ public struct TimelinePreview {
         videoComposition.colorPrimaries = AVVideoColorPrimaries_ITU_R_709_2
         videoComposition.colorTransferFunction = AVVideoTransferFunction_ITU_R_709_2
         videoComposition.colorYCbCrMatrix = AVVideoYCbCrMatrix_ITU_R_709_2
+        if project.hasVisualTransitions { videoComposition.customVideoCompositorClass = VisualVideoCompositor.self }
         videoComposition.instructions = instructions
         try Task.checkCancellation()
         return TimelinePreview(resources: resources, composition: composition, videoComposition: videoComposition, audioMix: mix, visualTracks: visualTracks)
@@ -137,6 +151,7 @@ public struct TimelinePreview {
               let result = videoComposition.mutableCopy() as? AVMutableVideoComposition else { return videoComposition }
         let matrix = fitted.concatenating(transform.canvasTransform(width: Int(result.renderSize.width), height: Int(result.renderSize.height)))
         result.instructions = videoComposition.instructions.map { original in
+            if let custom = original as? VisualCompositionInstruction { return custom.transforming(id, to: transform) }
             guard let instruction = original as? AVVideoCompositionInstruction,
                   let copy = instruction.mutableCopy() as? AVMutableVideoCompositionInstruction else { return original }
             copy.layerInstructions = instruction.layerInstructions.map { layer in

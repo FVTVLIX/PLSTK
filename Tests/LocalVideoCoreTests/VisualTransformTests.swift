@@ -34,7 +34,7 @@ final class VisualTransformTests: XCTestCase {
         json["version"] = 4
         json["clips"] = (json["clips"] as! [[String: Any]]).map { entry -> [String: Any] in var entry = entry; entry.removeValue(forKey: "transform"); return entry }
         let legacy = try JSONDecoder().decode(VideoProject.self, from: JSONSerialization.data(withJSONObject: json))
-        XCTAssertEqual(legacy.version, 8); XCTAssertEqual(legacy.clips[0].transform, VisualTransform())
+        XCTAssertEqual(legacy.version, 9); XCTAssertEqual(legacy.clips[0].transform, VisualTransform())
         for bad in [VisualTransform(x: .nan), VisualTransform(scale: 0), VisualTransform(scale: 4.01), VisualTransform(rotation: .infinity), VisualTransform(y: 32769)] {
             project.clips[0].transform = bad; XCTAssertThrowsError(try project.validate())
         }

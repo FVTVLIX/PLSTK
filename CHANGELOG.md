@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Visual fades and scene dissolves
+
+Transitions now provides simple icon presets for visual Fade in, Fade out, and Dissolve from previous. Precise durations are available inside Fine tune. The panel follows the selected clip, and transitions also appear in the contextual clip toolbox.
+
+Dissolves blend adjacent clips on the same track and move later clips on that track earlier by the overlap duration. Embedded sound blends with the scene change. Independent audio and other visual tracks stay in place. Visual fades alone leave sound unchanged. Remove a dissolve before changing its cut; splits outside the blend preserve the link.
+
+Project format 9 stores fades and dissolve links, migrates earlier projects, and supports undo and recovery. Seven new tests bring the suite to 70 passing tests, including decoded preview and export comparisons for video, image layers, transparent titles, transforms, split fades, and sound blending.
+
 ### Easier navigation on longer timelines
 
 Moving visual or audio clips and trimming visual clips now scrolls the timeline near its horizontal edges. Speed increases toward the edge, with extra working room as the draft moves beyond the current edit. Drag calculations include scroll distance so clips stay with the pointer.
