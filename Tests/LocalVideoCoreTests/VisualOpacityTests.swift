@@ -75,7 +75,7 @@ final class VisualOpacityTests: XCTestCase {
             var entry = entry; entry.removeValue(forKey: "opacity"); entry.removeValue(forKey: "imageTransparency"); return entry
         }
         let legacy = try JSONDecoder().decode(VideoProject.self,from: JSONSerialization.data(withJSONObject: json))
-        XCTAssertEqual(legacy.version,7); XCTAssertTrue(legacy.clips.allSatisfy { $0.opacity == 1 && !$0.imageTransparency })
+        XCTAssertEqual(legacy.version,8); XCTAssertTrue(legacy.clips.allSatisfy { $0.opacity == 1 && !$0.imageTransparency })
         for bad in [-0.01,1.01,Double.nan,Double.infinity] {
             project.clips[0].opacity = bad; XCTAssertThrowsError(try project.validate())
         }

@@ -106,6 +106,7 @@ public enum VideoRenderer {
         var audioInputs: [String] = []
         for (index, clip) in project.clips.enumerated() {
             let asset = try project.asset(for: clip)
+            guard !asset.isTitle else { throw EditorError("Use render to prepare title images before building export arguments.") }
             let start = seconds(clip.inFrame), duration = seconds(clip.frames)
             if asset.isImage {
                 args += ["-protocol_whitelist", "file,pipe", "-loop", "1", "-framerate", "30", "-t", duration, "-i", asset.path]
@@ -161,7 +162,7 @@ public enum VideoRenderer {
                               progress: @escaping (Double) -> Void = { _ in }) throws {
         guard output.isFileURL else { throw EditorError("Choose a local export destination.") }
         let destination = output.standardizedFileURL.resolvingSymlinksInPath()
-        guard !project.assets.contains(where: { URL(fileURLWithPath: $0.path).resolvingSymlinksInPath() == destination }) else {
+        guard !project.assets.contains(where: { !$0.isTitle && URL(fileURLWithPath: $0.path).resolvingSymlinksInPath() == destination }) else {
             throw EditorError("Export cannot overwrite a source media file.")
         }
         let temporary = output.deletingLastPathComponent().appendingPathComponent(".\(UUID().uuidString).mp4")
@@ -176,10 +177,10 @@ public enum VideoRenderer {
             guard asset.isImage else { continue }
             let key = "\(asset.id)-\(clip.imageTransparency)"
             if normalizedImages[key] == nil {
-                var normalized = asset
-                normalized.id = UUID()
-                normalized.path = try StillImage.normalized(asset, width: project.width, height: project.height,
+                let path = try StillImage.normalized(asset, width: project.width, height: project.height,
                     directory: images.directory, preserveAlpha: clip.imageTransparency).path
+                let normalized = MediaAsset(path: path, duration: asset.duration,
+                    width: project.width, height: project.height, isImage: true)
                 normalizedImages[key] = normalized
                 prepared.assets.append(normalized)
             }

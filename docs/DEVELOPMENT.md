@@ -42,3 +42,9 @@ Avoid creating a separate rendering interpretation in the interface. The preview
 Recovery copies contain project data and local media paths. Keep them private. The native editor supports `PLSTK_RECOVERY_DIRECTORY` for testing with a separate local folder. Use an absolute path to a disposable folder when simulating an unexpected quit. The normal location is the PLSTK Recovery folder within the current user's Application Support directory.
 
 Exercise recovery with synthetic projects. Verify that the original project bytes remain unchanged, that Not Now preserves the copy, that another running editor cannot consume it, and that saving or explicitly discarding an edit clears its working copy. Writes use a serial queue, a short editing delay, and atomic file replacement. Do not let a pending write recreate a cleared copy.
+
+## Title rendering
+
+Editable titles live in the project as generated visual assets. They have no external media path. Core Text supplies the same transparent raster to the still preview proxy and FFmpeg preparation. Preserve that shared layout when adding typography controls.
+
+A title edit must not change another split part or duplicate. Copy the generated source when more than one clip uses it. Include title content in thumbnail cache identity, preserve embedded data in recovery copies, and exclude generated assets from missing media and relink workflows. Verify decoded preview and export frames across title boundaries and visual transforms.

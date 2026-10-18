@@ -18,7 +18,7 @@ public struct RecoverySnapshot: Codable, Equatable {
     fileprivate func validate() throws {
         guard formatVersion == 1, updatedAt.timeIntervalSince1970.isFinite,
               originalFileURL.map(\.isFileURL) ?? true,
-              project.assets.allSatisfy({ $0.path.hasPrefix("/") }) else {
+              project.assets.allSatisfy({ $0.isTitle || $0.path.hasPrefix("/") }) else {
             throw EditorError("This recovery copy cannot be opened.")
         }
         // Missing media must not prevent recovering the edit and relinking later.

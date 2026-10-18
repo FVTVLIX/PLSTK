@@ -19,10 +19,12 @@ public struct MediaAsset: Codable, Equatable, Identifiable, Sendable {
     public var frameRate: Double
     public var videoStream: Int
     public var audioStream: Int?
-    public var isImage: Bool { image == true }
+    public var title: TextTitle?
+    public var isTitle: Bool { title != nil }
+    public var isImage: Bool { image == true || isTitle }
     private var image: Bool?
     public var isAudioOnly: Bool { videoStream == -1 }
-    public var name: String { URL(fileURLWithPath: path).lastPathComponent }
+    public var name: String { title.map { String($0.text.prefix(60)).replacingOccurrences(of: "\n", with: " ") } ?? URL(fileURLWithPath: path).lastPathComponent }
 
     public init(id: UUID = UUID(), path: String, duration: Double, width: Int, height: Int,
                 rotation: Int = 0, frameRate: Double = 30, videoStream: Int = 0, audioStream: Int? = nil, isImage: Bool = false) {
@@ -102,7 +104,7 @@ public struct AudioClip: Codable, Equatable, Identifiable, Sendable {
 }
 
 public struct VideoProject: Codable, Equatable, Sendable {
-    public var version = 7
+    public var version = 8
     public var visualTrackCount = 1
     public var name = "Untitled edit"
     public var width = 1280
@@ -116,8 +118,8 @@ public struct VideoProject: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let storedVersion = try values.decode(Int.self, forKey: .version)
-        guard (1...7).contains(storedVersion) else { throw EditorError("Unsupported project version: \(storedVersion).") }
-        version = 7
+        guard (1...8).contains(storedVersion) else { throw EditorError("Unsupported project version: \(storedVersion).") }
+        version = 8
         name = try values.decode(String.self, forKey: .name)
         width = try values.decode(Int.self, forKey: .width); height = try values.decode(Int.self, forKey: .height)
         assets = try values.decode([MediaAsset].self, forKey: .assets)
@@ -151,7 +153,7 @@ public struct VideoProject: Codable, Equatable, Sendable {
         return asset
     }
     public func validate(requireMedia: Bool = false) throws {
-        guard version == 7 else { throw EditorError("Unsupported project version: \(version).") }
+        guard version == 8 else { throw EditorError("Unsupported project version: \(version).") }
         guard width >= 2, height >= 2, width <= 16384, height <= 16384,
               width % 2 == 0, height % 2 == 0 else {
             throw EditorError("Output dimensions must be even numbers between 2 and 16384.")
@@ -160,6 +162,7 @@ public struct VideoProject: Codable, Equatable, Sendable {
               Set((clips.map(\.id) + audioClips.map(\.id))).count == clips.count + audioClips.count else { throw EditorError("Duplicate project identifiers.") }
         guard clips.allSatisfy({ $0.inFrame >= 0 && $0.outFrame > $0.inFrame && $0.outFrame < 30_000_000 && ($0.startFrame.map { (0...30_000_000).contains($0) } ?? true) }) else { throw EditorError("Invalid visual clip range or position.") }
         for asset in assets {
+            try asset.title?.validate()
             guard asset.duration.isFinite, asset.duration > 0, asset.duration < 1_000_000,
                   (asset.isAudioOnly ? (asset.width == 0 && asset.height == 0 && asset.audioStream != nil) : (asset.width > 0 && asset.height > 0 && asset.videoStream >= 0)),
                   (asset.audioStream.map({ $0 >= 0 }) ?? true),
@@ -199,7 +202,7 @@ public struct VideoProject: Codable, Equatable, Sendable {
         }
         if requireMedia {
             for asset in assets where clips.contains(where: { $0.assetID == asset.id }) || audioClips.contains(where: { $0.assetID == asset.id }) {
-                guard FileManager.default.isReadableFile(atPath: asset.path) else {
+                guard asset.isTitle || FileManager.default.isReadableFile(atPath: asset.path) else {
                     throw EditorError("Missing media: \(asset.path). Select the asset and use Relink.")
                 }
             }
@@ -237,7 +240,7 @@ public enum ProjectFile {
         var project = try JSONDecoder().decode(VideoProject.self, from: Data(contentsOf: url))
         for index in project.assets.indices {
             let path = project.assets[index].path
-            if !path.hasPrefix("/") {
+            if !project.assets[index].isTitle && !path.hasPrefix("/") {
                 project.assets[index].path = url.deletingLastPathComponent().appendingPathComponent(path).standardizedFileURL.path
             }
         }
@@ -249,7 +252,7 @@ public enum ProjectFile {
         var stored = project
         let base = url.deletingLastPathComponent().standardizedFileURL.path + "/"
         for index in stored.assets.indices {
-            if stored.assets[index].path.hasPrefix(base) { stored.assets[index].path.removeFirst(base.count) }
+            if !stored.assets[index].isTitle && stored.assets[index].path.hasPrefix(base) { stored.assets[index].path.removeFirst(base.count) }
         }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

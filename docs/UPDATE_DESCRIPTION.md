@@ -1,9 +1,9 @@
-# Keep your edit after an unexpected quit
+# Give your story a title
 
-PLSTK now keeps a local recovery copy while you work. If the app closes unexpectedly, you can recover your edit the next time it opens. Choose Not Now to return to it later through the File menu, or discard a copy you no longer need.
+PLSTK now includes editable text titles. Choose a Simple, Statement, or Caption style, type your words, and place the title above your footage. Color choices and Top, Centre, and Bottom buttons keep the everyday controls simple.
 
-Recovery opens your edit as an unsaved project and asks where to save it. Your original saved project stays unchanged. Existing save backups, media relinking, and regular save prompts continue to work alongside recovery.
+You can edit text from the viewer and use its handles to position, resize, or rotate the title. Fine tune keeps exact size and alignment available when you need them. Titles work with the timeline's duration, opacity, split, duplicate, and undo controls.
 
-The recovery workflow stays out of the way during normal editing. A warning appears only if the copy cannot be updated. Copies belonging to another open editor are protected, and unreadable copies stay on disk for inspection.
+Your text stays editable inside the project, including recovery copies. Split parts and duplicated titles can be changed independently. A shared text renderer keeps preview and export consistent without separate image files or custom fonts.
 
-This update includes seven new recovery tests, with all 48 tests passing. Native checks cover an unexpected quit, the recovery prompt, returning to a deferred copy, restoring an edit, and saving it as a project.
+The update uses project format 8 and opens earlier projects. Older app versions cannot open projects saved in the new format. All 55 tests pass, including seven new title tests. Automatic transcription and caption timing remain future work.

@@ -421,7 +421,7 @@ import UniformTypeIdentifiers
             recoveredEdit = false
             invalidatePreview(); project = loaded; fileURL = url; dirty = false
             selectedAudio = nil; selectedClip = loaded.clips.first?.id; selectedAsset = loaded.assets.first?.id; past = []; future = []
-            let missing = loaded.assets.filter { !FileManager.default.isReadableFile(atPath: $0.path) }.count
+            let missing = loaded.assets.filter { !$0.isTitle && !FileManager.default.isReadableFile(atPath: $0.path) }.count
             status = missing > 0 ? "\(missing) missing asset(s) · select media and Relink" : "Project opened"
             playheadFrame = 0; refreshPreview()
         } catch { self.error = error.localizedDescription }

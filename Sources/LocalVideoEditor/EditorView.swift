@@ -39,6 +39,7 @@ struct EditorView: View {
     @State private var timelineHeight = 240.0
     @State private var resizeOrigin: Double?
     @State private var mediaPreview: UUID?
+    @State private var editingTitle = false
     @State private var zoom = 0.4
     @State private var trimDraft: TimelineTrimDraft?
     @State private var movingClip: UUID?
@@ -100,7 +101,7 @@ struct EditorView: View {
             let sources = Set(store.project.assets.compactMap { try? MediaVisualSource($0) })
             await MediaVisualCache.shared.retainSources(sources)
         }
-        .onChange(of: store.selectedClip) { _, id in store.cancelCanvasTransform(); if id != nil { showLeft = true; showClipTools = true } }
+        .onChange(of: store.selectedClip) { _, id in editingTitle = false; store.cancelCanvasTransform(); if id != nil { showLeft = true; showClipTools = true } }
         .onChange(of: store.selectedAudio) { _, id in if id != nil { showLeft = true; showClipTools = true } }
         .onChange(of: store.selectionRevision) { _, _ in showClipTools = true; showLeft = true }
         .onChange(of: store.busy) { _, busy in
@@ -170,7 +171,8 @@ struct EditorView: View {
                 ClipToolbox(store: store).id(store.selectedAudio ?? store.selectedClip)
             } else if activeTool == "Layout" {
                 ProjectCanvasPanel(store: store)
-            } else if activeTool == "Audio" { audioPanel }
+            } else if activeTool == "Text" { TitlesPanel(store: store) }
+            else if activeTool == "Audio" { audioPanel }
             else { library }
         }.frame(maxHeight: .infinity).background(panel)
     }
@@ -200,7 +202,7 @@ struct EditorView: View {
                 Spacer()
                 Button("Add", systemImage: "plus", action: store.importMedia).help("Import media ⌘I").disabled(store.busy)
             }
-            if store.project.assets.isEmpty {
+            if !store.project.assets.contains(where: { !$0.isTitle }) {
                 VStack(spacing: 12) {
                     Image(systemName: "square.and.arrow.up").font(.system(size: 20, weight: .light)).padding(12)
                         .background(.white.opacity(0.06)).clipShape(RoundedRectangle(cornerRadius: 14))
@@ -210,7 +212,7 @@ struct EditorView: View {
             } else {
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    ForEach(store.project.assets.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }) { asset in
+                    ForEach(store.project.assets.filter { !$0.isTitle && (search.isEmpty || $0.name.localizedCaseInsensitiveContains(search)) }) { asset in
                         Button { store.selectedAsset = asset.id; mediaPreview = asset.id } label: {
                             VStack(alignment: .leading, spacing: 7) {
                                 MediaThumbnail(media: asset).frame(height: 100).clipped()
@@ -235,7 +237,7 @@ struct EditorView: View {
                 }
             }
             }
-            if let asset = store.asset {
+            if let asset = store.asset, !asset.isTitle {
                 Button("Add to timeline", systemImage: "plus") { store.addAsset(asset.id) }.disabled(store.busy)
                 Button("Relink media…", action: store.relink).font(.caption).disabled(store.busy)
             }
@@ -264,6 +266,14 @@ struct EditorView: View {
                 }
                 if store.canTransformCanvas, let clip = store.clip {
                     CanvasTransformView(store: store, clip: clip).id(clip.id)
+                }
+            }.overlay(alignment: .topLeading) {
+                if store.canTransformCanvas, store.sourceForClip?.isTitle == true, let clip = store.clip {
+                    Button { editingTitle = true } label: { Label("Edit text", systemImage: "text.cursor") }
+                        .buttonStyle(.bordered).padding(8).accessibilityLabel("Edit title in viewer")
+                        .popover(isPresented: $editingTitle) {
+                            TitleContentControls(store: store, clipID: clip.id).padding(18).frame(width: 300).preferredColorScheme(.dark)
+                        }
                 }
             }.aspectRatio(CGFloat(store.project.width) / CGFloat(store.project.height), contentMode: .fit)
                 .layoutPriority(-1)

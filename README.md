@@ -36,6 +36,16 @@ Transparent PNG images can sit over footage. Opacity lets the layer below show t
 
 Fine tune opens exact values for the option you selected. Back to Library returns to browsing, and selecting the same timeline clip opens its controls again.
 
+### Add titles
+
+Open Text and choose Simple, Statement, or Caption. A five second title appears at the playhead above the overlapping visual layers. Type your words, choose a color, and use Top, Centre, or Bottom to place them quickly.
+
+Use Edit text in the viewer to change the wording without returning to the sidebar. Viewer handles surround the title itself and support moving, resizing, and rotating. Exact size and text alignment live inside Fine tune.
+
+Titles are editable content stored inside the project. No generated image or separate font file needs to travel with the edit. You can trim, split, duplicate, move, or adjust the opacity of a title. Split parts and duplicates can be edited independently. A title can also form a standalone card on a black background.
+
+The Caption preset is a manual text style with a contrasting plate. Automatic transcription and timed caption generation are still planned. Titles currently use system typography, three color choices, and up to eight lines. Long text wraps and shrinks to fit.
+
 ### Shape the sound
 
 Independent audio clips support volume, mute, fade in, and fade out. Choose a fade preset, use a slider, or pull the circular handles on the timeline. Exact durations are available in Fine tune.
@@ -107,7 +117,7 @@ Recovered edits open as unsaved projects. Saving asks for a destination and sugg
 
 Recovery copies stay in the local Application Support folder for PLSTK. Copies belonging to another running editor are left alone. If a copy cannot be read, it stays on disk. A warning appears if recovery becomes unavailable, with options to retry or show the recovery folder.
 
-The current project format is version 7. Earlier versions open with migration defaults that preserve their existing timing and visual settings. Older app versions may not open projects saved by newer versions.
+The current project format is version 8. Earlier versions open with migration defaults that preserve their existing timing and visual settings. Older app versions may not open projects saved by newer versions.
 
 ## Keyboard shortcuts
 
@@ -132,7 +142,7 @@ The current project format is version 7. Earlier versions open with migration de
 
 ## Current limits
 
-Text titles, captions, transitions, effects, keyframes, and a connected editing assistant are still planned. Their interface entries are disabled where implementation is incomplete.
+Automatic captions, transitions, effects, keyframes, and a connected editing assistant are still planned. Their interface entries are disabled where implementation is incomplete.
 
 The current rendering workflow handles SDR output. Full HDR and color management, every codec combination, and all variable frame rate inputs have not been verified. macOS codec support determines what can play in the live preview.
 
@@ -149,7 +159,7 @@ swift test
 python3 scripts/smoke-test.py
 ```
 
-The current suite contains 48 tests. Coverage includes project migration, save and load, editing operations, transforms, layered visuals, image transparency, audio mixing, fade continuity, project recovery, and decoded comparisons between preview and export.
+The current suite contains 55 tests. Coverage includes project migration, save and load, editing operations, transforms, layered visuals, image transparency, audio mixing, fade continuity, editable titles, project recovery, and decoded comparisons between preview and export.
 
 The smoke test generates synthetic footage under `TestOutput/` and checks timing, cut boundaries, silent clips, delayed audio, rotation, variable frame rate handling, and export cancellation. Generated media and local project files are excluded from Git.
 

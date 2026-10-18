@@ -52,7 +52,7 @@ final class AudioFadesTests: XCTestCase {
             var entry = entry; entry.removeValue(forKey: "fadeInFrames"); entry.removeValue(forKey: "fadeOutFrames"); return entry
         }
         let old = try JSONDecoder().decode(VideoProject.self,from: JSONSerialization.data(withJSONObject: json))
-        XCTAssertEqual(old.version,7); XCTAssertEqual(old.audioClips[0].fadeInFrames,0); XCTAssertEqual(old.audioClips[0].fadeOutFrames,0)
+        XCTAssertEqual(old.version,8); XCTAssertEqual(old.audioClips[0].fadeInFrames,0); XCTAssertEqual(old.audioClips[0].fadeOutFrames,0)
         for bad in [Int64(-1),91,Int64.max] {
             var invalid = project; invalid.audioClips[0].fadeInFrames = bad; XCTAssertThrowsError(try invalid.validate())
         }

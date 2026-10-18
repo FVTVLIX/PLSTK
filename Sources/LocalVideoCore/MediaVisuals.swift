@@ -10,12 +10,19 @@ public struct MediaVisualSource: Hashable, Sendable {
     public let duration: Double
     public let audioStream: Int?
     public let isImage: Bool
+    public let title: TextTitle?
     private let size: UInt64
     private let modified: Double
     private let inode: UInt64
     public init(_ media: MediaAsset) throws {
         guard media.duration.isFinite, media.duration > 0, media.duration < 1_000_000,
               media.audioStream.map({ $0 >= 0 }) ?? true else { throw EditorError("Invalid media metadata for visuals.") }
+        title = media.title
+        if media.isTitle {
+            path = "title:\(media.id)"; duration = media.duration; audioStream = nil; isImage = true
+            size = 0; modified = 0; inode = 0
+            return
+        }
         let url = URL(fileURLWithPath: media.path).standardizedFileURL.resolvingSymlinksInPath()
         let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
         isImage = media.isImage
@@ -89,6 +96,7 @@ public actor MediaVisualCache {
         let job = Task.detached(priority: .utility) {
             await previous?.value
             try Task.checkCancellation()
+            if let title = source.title { return try title.raster(width: 192, height: 108) }
             if source.isImage { return try StillImage.decoded(URL(fileURLWithPath: source.path), maxSize: 192) }
             let generator = AVAssetImageGenerator(asset: AVURLAsset(url: URL(fileURLWithPath: source.path)))
             generator.appliesPreferredTrackTransform = true

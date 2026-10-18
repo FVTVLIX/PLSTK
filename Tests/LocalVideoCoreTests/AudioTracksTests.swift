@@ -32,7 +32,7 @@ final class AudioTracksTests: XCTestCase {
         let url = directory.appendingPathComponent("legacy.localvideo")
         try bytes.write(to: url)
         let migrated = try ProjectFile.load(url)
-        XCTAssertEqual(migrated.version, 7); XCTAssertEqual(migrated.clips, original.clips)
+        XCTAssertEqual(migrated.version, 8); XCTAssertEqual(migrated.clips, original.clips)
         XCTAssertTrue(migrated.audioClips.isEmpty); XCTAssertEqual(migrated.videoVolume, 1)
         try ProjectFile.save(migrated, to: url)
         XCTAssertEqual(try Data(contentsOf: url.appendingPathExtension("backup")), bytes)

@@ -29,7 +29,8 @@ struct CanvasTransformView: View {
             let top = CGPoint(x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2)
             let angle = value.rotation * .pi / 180
             // Keep the rotation handle inside an identity/full-canvas selection.
-            let rotate = CGPoint(x: top.x - sin(angle) * 24, y: top.y + cos(angle) * 24)
+            let handleOffset: Double = store.sourceForClip?.isTitle == true ? -24 : 24
+            let rotate = CGPoint(x: top.x - sin(angle) * handleOffset, y: top.y + cos(angle) * handleOffset)
             return ZStack {
                 Path { path in
                     path.addLines(points); path.closeSubpath()
@@ -58,7 +59,10 @@ struct CanvasTransformView: View {
     private func corners(_ value: VisualTransform, size: CGSize) -> [CGPoint] {
         let width = store.project.width, height = store.project.height
         let matrix = value.canvasTransform(width: width, height: height)
-        return [CGPoint.zero, CGPoint(x: width, y: 0), CGPoint(x: width, y: height), CGPoint(x: 0, y: height)].map {
+        let bounds = (try? store.sourceForClip?.title?.contentBounds(width: width, height: height))
+            ?? CGRect(x: 0, y: 0, width: width, height: height)
+        return [CGPoint(x: bounds.minX, y: bounds.minY), CGPoint(x: bounds.maxX, y: bounds.minY),
+                CGPoint(x: bounds.maxX, y: bounds.maxY), CGPoint(x: bounds.minX, y: bounds.maxY)].map {
             let point = $0.applying(matrix)
             return CGPoint(x: point.x * size.width / Double(width), y: point.y * size.height / Double(height))
         }

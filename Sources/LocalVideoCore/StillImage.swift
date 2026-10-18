@@ -36,6 +36,7 @@ enum StillImage {
         return image
     }
     static func raster(_ media: MediaAsset, width: Int, height: Int, preserveAlpha: Bool = false) throws -> CGImage {
+        if let title = media.title { return try title.raster(width: width, height: height, preserveAlpha: preserveAlpha) }
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
                                       bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
                                       bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue) else { throw EditorError("Cannot draw image.") }

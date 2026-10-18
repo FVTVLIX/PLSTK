@@ -20,6 +20,7 @@ struct ClipToolbox: View {
     private var tools: [ClipTool] {
         if audio != nil { return [.sound, .fades, .trim, .arrange] }
         var items: [ClipTool] = [.size, .rotate, .appearance, media?.isImage == true ? .duration : .trim]
+        if media?.isTitle == true { items.insert(.text, at: 0) }
         if media?.audioStream != nil { items.append(.sound) }
         items.append(.arrange)
         return items
@@ -32,7 +33,7 @@ struct ClipToolbox: View {
                         MediaThumbnail(media: media).frame(width: 58, height: 46).clipShape(RoundedRectangle(cornerRadius: 7))
                         VStack(alignment: .leading, spacing: 4) {
                             Text(media.name).font(.system(size: 12, weight: .medium)).lineLimit(2)
-                            Text(audio != nil ? "Audio clip" : (media.isImage ? "Image clip" : "Video clip"))
+                            Text(audio != nil ? "Audio clip" : (media.isTitle ? "Text title" : (media.isImage ? "Image clip" : "Video clip")))
                                 .font(.system(size: 11)).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 0)
@@ -91,11 +92,14 @@ struct ClipToolbox: View {
                 }
             }.padding(16)
         }.disabled(store.busy)
+            .onAppear { if media?.isTitle == true { tool = .text } }
             .onChange(of: store.selectedClip) { _, _ in tool = nil; precise = false; details = false }
             .onChange(of: store.selectedAudio) { _, _ in tool = nil; precise = false; details = false }
     }
     @ViewBuilder private func controls(_ tool: ClipTool) -> some View {
         switch tool {
+        case .text:
+            if let visual { TitleContentControls(store: store, clipID: visual.id) }
         case .size:
             Text("Drag the clip to move it. Pull a corner to resize.").toolboxHint()
             HStack {
@@ -121,7 +125,7 @@ struct ClipToolbox: View {
                 ToolboxSlider(value: visual.opacity, range: 0...1, title: "Opacity", leading: "circle.dotted", trailing: "circle.fill") { value in
                     editVisual { $0.opacity = value }
                 }
-                if media?.isImage == true {
+                if media?.isImage == true && media?.isTitle != true {
                     Toggle(isOn: Binding(get: { visual.imageTransparency }, set: { value in editVisual { $0.imageTransparency = value } })) {
                         Label("Transparent background", systemImage: "square.on.square.dashed")
                     }.toggleStyle(.switch).controlSize(.small).font(.system(size: 11))
@@ -189,8 +193,9 @@ struct ClipToolbox: View {
             AudioClipInspector(store: store, section: tool == .sound ? .sound : (tool == .fades ? .fades : (tool == .trim ? .trim : .arrange)))
         } else if let visual, let media {
             switch tool {
+            case .text: TitleTypographyControls(store: store, clipID: visual.id)
             case .size, .rotate: VisualTransformView(store: store, clip: visual)
-            case .appearance: VisualAppearanceView(store: store, clip: visual, isImage: media.isImage)
+            case .appearance: VisualAppearanceView(store: store, clip: visual, isImage: media.isImage && !media.isTitle)
             case .arrange: VisualPlacementView(store: store, clip: visual)
             case .trim, .duration: PreciseTrimView(store: store, clip: visual, isImage: media.isImage)
             default: Toggle("Mute clip", isOn: Binding(get: { visual.muted }, set: mute))
@@ -201,9 +206,11 @@ struct ClipToolbox: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Clip details").font(.headline)
             Text(media.name).textSelection(.enabled)
-            if !media.isAudioOnly { LabeledContent("Dimensions", value: "\(media.width) × \(media.height)") }
-            LabeledContent("Source duration", value: String(format: "%.2f seconds", media.duration))
-            Button("Reveal original") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: media.path)]) }
+            if !media.isAudioOnly && !media.isTitle { LabeledContent("Dimensions", value: "\(media.width) × \(media.height)") }
+            if !media.isTitle {
+                LabeledContent("Source duration", value: String(format: "%.2f seconds", media.duration))
+                Button("Reveal original") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: media.path)]) }
+            } else { Text("Text is stored inside your project.") }
         }.font(.system(size: 12))
     }
     private func normalized(_ angle: Double) -> Double { (angle + 540).truncatingRemainder(dividingBy: 360) - 180 }
@@ -247,10 +254,11 @@ struct ClipToolbox: View {
 }
 
 private enum ClipTool: String, Identifiable {
-    case size, rotate, appearance, trim, duration, sound, fades, arrange
+    case text, size, rotate, appearance, trim, duration, sound, fades, arrange
     var id: Self { self }
     var title: String {
         switch self {
+        case .text: return "Text & style"
         case .size: return "Size & position"
         case .rotate: return "Rotate"
         case .appearance: return "Opacity"
@@ -263,6 +271,7 @@ private enum ClipTool: String, Identifiable {
     }
     var symbol: String {
         switch self {
+        case .text: return "textformat"
         case .size: return "arrow.up.left.and.arrow.down.right"
         case .rotate: return "rotate.right"
         case .appearance: return "circle.lefthalf.filled"
