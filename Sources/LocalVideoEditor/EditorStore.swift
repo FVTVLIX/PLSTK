@@ -16,6 +16,13 @@ import UniformTypeIdentifiers
     @Published var selectedAsset: UUID?
     @Published var fileURL: URL?
     @Published var dirty = false
+    @Published var recoveryWarning: String?
+    private var recoveryStarted = false
+    private var recoveredEdit = false
+    private var recovery: ProjectRecovery?
+    private var recoveryWork: DispatchWorkItem?
+    private var recoveryRevision = UUID()
+    private let recoveryQueue = DispatchQueue(label: "studio.localvideo.recovery", qos: .utility)
     @Published var error: String?
     @Published var status = "Ready to import a local video"
     @Published var busy = false
@@ -59,6 +66,7 @@ import UniformTypeIdentifiers
             past.append(project); if past.count > 100 { past.removeFirst() }
             future.removeAll(); project = next; dirty = true
             status = "Edit updated"
+            scheduleRecovery()
             if playbackChanged { refreshPreview() }
         } catch { self.error = error.localizedDescription }
     }
@@ -202,11 +210,11 @@ import UniformTypeIdentifiers
 
     func undo() {
         guard !busy, let previous = past.popLast() else { return }
-        future.append(project); project = previous; dirty = true; refreshPreview()
+        future.append(project); project = previous; dirty = true; scheduleRecovery(); refreshPreview()
     }
     func redo() {
         guard !busy, let next = future.popLast() else { return }
-        past.append(project); project = next; dirty = true; refreshPreview()
+        past.append(project); project = next; dirty = true; scheduleRecovery(); refreshPreview()
     }
     func addAsset(_ id: UUID) {
         let audio = project.assets.first { $0.id == id }?.isAudioOnly == true
@@ -397,6 +405,8 @@ import UniformTypeIdentifiers
     }
     func newProject() {
         guard confirmDiscard() else { return }
+        guard clearRecovery() else { return }
+        recoveredEdit = false
         invalidatePreview(); project = VideoProject(); fileURL = nil; selectedClip = nil; selectedAudio = nil; selectedAsset = nil
         dirty = false; past = []; future = []; playheadFrame = 0; status = "New local project"
     }
@@ -407,6 +417,8 @@ import UniformTypeIdentifiers
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             let loaded = try ProjectFile.load(url)
+            guard clearRecovery() else { return }
+            recoveredEdit = false
             invalidatePreview(); project = loaded; fileURL = url; dirty = false
             selectedAudio = nil; selectedClip = loaded.clips.first?.id; selectedAsset = loaded.assets.first?.id; past = []; future = []
             let missing = loaded.assets.filter { !FileManager.default.isReadableFile(atPath: $0.path) }.count
@@ -420,14 +432,16 @@ import UniformTypeIdentifiers
         if saveAs || target == nil {
             let panel = NSSavePanel()
             panel.allowedContentTypes = [UTType(filenameExtension: "localvideo") ?? .json]
-            panel.nameFieldStringValue = project.name + ".localvideo"
+            panel.nameFieldStringValue = project.name + (recoveredEdit ? " recovered" : "") + ".localvideo"
             guard panel.runModal() == .OK, let url = panel.url else { return false }
             target = url
         }
         guard let target else { return false }
         do {
             try ProjectFile.save(project, to: target)
-            fileURL = target; dirty = false; status = "Saved \(target.lastPathComponent)"; return true
+            fileURL = target; dirty = false; recoveredEdit = false
+            _ = clearRecovery()
+            status = "Saved \(target.lastPathComponent)"; return true
         } catch { self.error = error.localizedDescription; return false }
     }
     func buildPreview() {
@@ -475,5 +489,140 @@ import UniformTypeIdentifiers
         }
     }
     func cancel() { job?.cancel(); status = "Cancelling…" }
-    func cleanup() { job?.cancel(); invalidatePreview(); MediaVisualCache.shared.stopWorkers(); Task { await MediaVisualCache.shared.cancelAll() }; try? FileManager.default.removeItem(at: cache) }
+    func cleanup() { _ = clearRecovery(); job?.cancel(); invalidatePreview(); MediaVisualCache.shared.stopWorkers(); Task { await MediaVisualCache.shared.cancelAll() }; try? FileManager.default.removeItem(at: cache) }
+}
+
+// Recovery uses its own serial writer so delayed edits cannot resurrect a discarded copy.
+extension EditorStore {
+    private var recoveryDirectory: URL {
+        // An isolated directory allows native verification without touching real recovery data.
+        if let path = ProcessInfo.processInfo.environment["PLSTK_RECOVERY_DIRECTORY"], path.hasPrefix("/") {
+            return URL(fileURLWithPath: path, isDirectory: true)
+        }
+        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("PLSTK/Recovery", isDirectory: true)
+    }
+
+    func startRecovery() {
+        guard !recoveryStarted else { return }
+        recoveryStarted = true
+        guard prepareRecovery() else { return }
+        offerRecovery(automatically: true)
+    }
+
+    private func prepareRecovery() -> Bool {
+        if recovery != nil { return true }
+        do {
+            let directory = recoveryDirectory
+            recovery = try recoveryQueue.sync { try ProjectRecovery(directory: directory) }
+            recoveryWarning = nil
+            return true
+        } catch {
+            recoveryWarning = "Recovery is unavailable. Save your project to keep your edits."
+            return false
+        }
+    }
+
+    private func cancelRecoveryWrite() {
+        recoveryWork?.cancel(); recoveryWork = nil; recoveryRevision = UUID()
+    }
+
+    private func scheduleRecovery() {
+        cancelRecoveryWrite()
+        guard dirty, prepareRecovery(), let recovery else { return }
+        let snapshot = RecoverySnapshot(project: project, originalFileURL: fileURL), revision = recoveryRevision
+        let work = DispatchWorkItem { [weak self] in
+            do {
+                try recovery.write(snapshot)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.recoveryRevision == revision else { return }
+                    self.recoveryWarning = nil
+                }
+            } catch {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.recoveryRevision == revision else { return }
+                    self.recoveryWarning = "Recovery could not be updated. Save your project to keep your latest edits."
+                }
+            }
+        }
+        recoveryWork = work
+        recoveryQueue.asyncAfter(deadline: .now() + 1, execute: work)
+    }
+
+    func flushRecovery() {
+        cancelRecoveryWrite()
+        guard dirty, prepareRecovery(), let recovery else { return }
+        do {
+            let snapshot = RecoverySnapshot(project: project, originalFileURL: fileURL)
+            try recoveryQueue.sync { try recovery.write(snapshot) }
+            recoveryWarning = nil
+        } catch { recoveryWarning = "Recovery could not be updated. Save your project to keep your latest edits." }
+    }
+
+    @discardableResult private func clearRecovery() -> Bool {
+        cancelRecoveryWrite()
+        guard let recovery else { return true }
+        do {
+            try recoveryQueue.sync { try recovery.clear() }
+            recoveryWarning = nil
+            return true
+        } catch {
+            recoveryWarning = "The previous recovery copy could not be removed. Try again before changing projects."
+            return false
+        }
+    }
+
+    func offerRecovery(automatically: Bool = false) {
+        guard !busy, prepareRecovery(), let recovery else { return }
+        do {
+            let scan = try recoveryQueue.sync { try recovery.scan() }
+            guard let candidate = scan.candidates.first else {
+                if scan.unreadableCount > 0 {
+                    recoveryWarning = "A recovery copy could not be read. It remains in the recovery folder."
+                } else if !automatically {
+                    let alert = NSAlert(); alert.messageText = "No recovery copies available"
+                    alert.informativeText = "Edits from an unexpected quit will appear here. Copies belonging to another open editor stay with that editor."
+                    alert.runModal()
+                }
+                return
+            }
+            let snapshot = candidate.snapshot
+            let alert = NSAlert()
+            alert.messageText = "Recover your edit?"
+            alert.icon = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Project recovery")
+            let date = snapshot.updatedAt.formatted(date: .abbreviated, time: .shortened)
+            alert.informativeText = "\(snapshot.project.name)\nA local recovery copy from \(date) is available. Your saved project will stay unchanged."
+            alert.addButton(withTitle: "Recover")
+            alert.addButton(withTitle: "Not Now")
+            alert.addButton(withTitle: "Discard Copy")
+            switch alert.runModal() {
+            case .alertFirstButtonReturn:
+                guard confirmDiscard() else { return }
+                cancelRecoveryWrite()
+                // Secure the recovered state in this session before consuming the old copy.
+                try recoveryQueue.sync { try recovery.write(snapshot) }
+                invalidatePreview(); project = snapshot.project; fileURL = nil; recoveredEdit = true; dirty = true
+                selectedAudio = nil; selectedClip = project.clips.first?.id; selectedAsset = project.assets.first?.id
+                past = []; future = []; playheadFrame = 0
+                do {
+                    try recoveryQueue.sync { try recovery.discard(candidate) }
+                    recoveryWarning = nil
+                } catch { recoveryWarning = "Your edit was recovered. The earlier recovery copy could not be removed." }
+                refreshPreview()
+                status = "Edit recovered · Save to keep a project copy"
+            case .alertThirdButtonReturn:
+                try recoveryQueue.sync { try recovery.discard(candidate) }
+            default: break // Not Now leaves the copy available from the File menu.
+            }
+        } catch { recoveryWarning = "Recovery could not be opened. Your existing copies remain on this Mac." }
+    }
+
+    func retryRecovery() {
+        if dirty { flushRecovery() }
+        else if prepareRecovery(), clearRecovery() { offerRecovery(automatically: true) }
+    }
+
+    func revealRecoveryCopies() {
+        NSWorkspace.shared.open(recoveryDirectory)
+    }
 }

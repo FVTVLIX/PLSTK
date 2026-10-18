@@ -99,7 +99,13 @@ Project files use the `.localvideo` extension and store the edit rather than cop
 
 Paths are relative when an asset is beneath the project folder, and absolute otherwise. Keep source files available. If a file moves, return to the Library and use Relink media.
 
-Saving an existing project keeps its previous saved version in a backup file. Opening, closing, or replacing an unsaved project prompts before discarding edits. Automatic recovery is still planned, so save regularly.
+Saving an existing project keeps its previous saved version in a backup file. Opening, closing, or replacing an unsaved project prompts before discarding edits.
+
+PLSTK also keeps a separate local recovery copy after a brief pause in editing and when the app moves into the background. After an unexpected quit, choose Recover to restore that edit, Not Now to leave it for later, or Discard Copy to remove it. File > Recover Unsaved Edit lets you return to a deferred copy.
+
+Recovered edits open as unsaved projects. Saving asks for a destination and suggests a name ending in “recovered,” so your original saved project stays unchanged. Media files remain in their existing locations and can be relinked if needed. Recovery does not restore undo history or replace regular saving. Edits made immediately before an unexpected quit may not yet be in the recovery copy.
+
+Recovery copies stay in the local Application Support folder for PLSTK. Copies belonging to another running editor are left alone. If a copy cannot be read, it stays on disk. A warning appears if recovery becomes unavailable, with options to retry or show the recovery folder.
 
 The current project format is version 7. Earlier versions open with migration defaults that preserve their existing timing and visual settings. Older app versions may not open projects saved by newer versions.
 
@@ -132,7 +138,7 @@ The current rendering workflow handles SDR output. Full HDR and color management
 
 Audio lanes mix without automatic loudness normalization. Fades use linear amplitude curves, and the final MP4 is opaque rather than an export with transparency.
 
-Only one timeline clip can be selected at a time. Timeline edge scrolling, automatic project recovery, persistent media caches, and bundled media workers remain future work.
+Only one timeline clip can be selected at a time. Timeline edge scrolling, persistent media caches, and bundled media workers remain future work.
 
 ## Development and verification
 
@@ -143,7 +149,7 @@ swift test
 python3 scripts/smoke-test.py
 ```
 
-The current suite contains 41 tests. Coverage includes project migration, save and load, editing operations, transforms, layered visuals, image transparency, audio mixing, fade continuity, and decoded comparisons between preview and export.
+The current suite contains 48 tests. Coverage includes project migration, save and load, editing operations, transforms, layered visuals, image transparency, audio mixing, fade continuity, project recovery, and decoded comparisons between preview and export.
 
 The smoke test generates synthetic footage under `TestOutput/` and checks timing, cut boundaries, silent clips, delayed audio, rotation, variable frame rate handling, and export cancellation. Generated media and local project files are excluded from Git.
 

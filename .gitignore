@@ -19,6 +19,8 @@ xcuserdata/
 /TestOutput/
 *.localvideo
 *.localvideo.backup
+*.recovery
+/Recovery/
 *.backup
 *.log
 *.trace

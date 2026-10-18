@@ -1,11 +1,9 @@
-# Introducing PLSTK
+# Keep your edit after an unexpected quit
 
-PLSTK is a native macOS video editor focused on simple controls and local editing. Import your footage, arrange it on the timeline, shape the sound, and export an MP4 on your own Mac.
+PLSTK now keeps a local recovery copy while you work. If the app closes unexpectedly, you can recover your edit the next time it opens. Choose Not Now to return to it later through the File menu, or discard a copy you no longer need.
 
-The current version includes layered visual tracks, independent audio lanes, transparent image overlays, clip opacity, viewer controls for moving and resizing, and audio fades that stay continuous when a clip is split. Everyday edits use icons, presets, and sliders. Fine tune opens precise settings when you need them, and Back to Library returns you to browsing without losing your place.
+Recovery opens your edit as an unsaved project and asks where to save it. Your original saved project stays unchanged. Existing save backups, media relinking, and regular save prompts continue to work alongside recovery.
 
-Project saving, media relinking, undo and redo, local preview, and export cancellation are also included. Core editing does not require an account or subscription, and the app does not add watermarks or export quotas.
+The recovery workflow stays out of the way during normal editing. A warning appears only if the copy cannot be updated. Copies belonging to another open editor are protected, and unreadable copies stay on disk for inspection.
 
-This public development checkpoint includes the GNU GPL version 3 license, source code, build instructions, tests, and contribution guidance. It is an early version for people who want to try the editor and help shape its direction. FFmpeg must currently be installed separately, and a signed and notarized app download is still planned.
-
-The next design work will establish the PLSTK app icon, wordmark, and visual identity while keeping the editing experience clear and approachable.
+This update includes seven new recovery tests, with all 48 tests passing. Native checks cover an unexpected quit, the recovery prompt, returning to a deferred copy, restoring an edit, and saving it as a project.

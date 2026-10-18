@@ -48,6 +48,15 @@ struct EditorView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+            if let warning = store.recoveryWarning {
+                HStack(spacing: 10) {
+                    Label(warning, systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                        .font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    Button("Try again", action: store.retryRecovery)
+                    Button("Show copies", action: store.revealRecoveryCopies)
+                }.padding(.horizontal, 14).padding(.vertical, 8).background(Color.orange.opacity(0.12))
+            }
             HStack(spacing: 0) {
                 VStack(spacing: 0) {
                     HStack(spacing: 0) {

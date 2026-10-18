@@ -40,7 +40,11 @@ struct WindowHook: NSViewRepresentable {
             EditorView(store: store)
                 .ignoresSafeArea(.container, edges: .top)
                 .background(WindowHook(delegate: delegate))
-                .onAppear { delegate.store = store }
+                .onAppear {
+                    delegate.store = store
+                    DispatchQueue.main.async { store.startRecovery() }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in store.flushRecovery() }
                 .frame(minWidth: 1000, minHeight: 700)
                 .preferredColorScheme(.dark)
         }
@@ -51,6 +55,8 @@ struct WindowHook: NSViewRepresentable {
                 Button("New Project", action: store.newProject).keyboardShortcut("n").disabled(store.busy)
                 Button("Open Project…", action: store.openProject).keyboardShortcut("o").disabled(store.busy)
                 Button("Import Media…", action: store.importMedia).keyboardShortcut("i").disabled(store.busy)
+                Divider()
+                Button("Recover Unsaved Edit…") { store.offerRecovery() }.disabled(store.busy)
             }
             CommandGroup(replacing: .saveItem) {
                 Button("Save Project") { store.save() }.keyboardShortcut("s").disabled(store.busy)

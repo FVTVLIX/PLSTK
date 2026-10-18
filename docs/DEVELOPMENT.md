@@ -36,3 +36,9 @@ The project currently has no external Swift package dependencies. Changes that i
 `LocalVideoCLI` exposes the current command line operations using the same core.
 
 Avoid creating a separate rendering interpretation in the interface. The preview and export should describe the same edit.
+
+## Recovery verification
+
+Recovery copies contain project data and local media paths. Keep them private. The native editor supports `PLSTK_RECOVERY_DIRECTORY` for testing with a separate local folder. Use an absolute path to a disposable folder when simulating an unexpected quit. The normal location is the PLSTK Recovery folder within the current user's Application Support directory.
+
+Exercise recovery with synthetic projects. Verify that the original project bytes remain unchanged, that Not Now preserves the copy, that another running editor cannot consume it, and that saving or explicitly discarding an edit clears its working copy. Writes use a serial queue, a short editing delay, and atomic file replacement. Do not let a pending write recreate a cleared copy.

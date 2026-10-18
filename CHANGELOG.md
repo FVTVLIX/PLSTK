@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Automatic project recovery
+
+Unsaved edits now get a separate local recovery copy after a brief pause and when PLSTK moves into the background. After an unexpected quit, a simple prompt offers Recover, Not Now, or Discard Copy. Deferred copies remain available from the File menu.
+
+Recovered edits ask for a new save destination, keeping the original project unchanged. Saving, discarding edits, or successfully changing projects clears the current working copy. Recovery protects active editor sessions and retains unreadable copies for inspection. A small warning appears if recovery cannot be updated.
+
+Seven new tests cover recovery persistence, active sessions, deferred copies, invalid data, missing media, and private file permissions. All 48 tests pass. Native checks verify an unexpected quit, recovery prompt, deferral, restoration, and saving a recovered edit.
+
 ### First public development checkpoint
 
 PLSTK now has a native macOS editing workspace with a media Library, layered visual tracks, two independent audio lanes, local preview, and MP4 export.
