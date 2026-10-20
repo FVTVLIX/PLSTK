@@ -13,19 +13,25 @@ This is an early implementation. The editing workflow is functional, while creat
 5. Describe the edit and choose Prepare draft.
 6. Review the explanation, sampled preview frames, and any warnings. Apply draft commits the proposal as one undoable edit. Discard leaves the timeline unchanged.
 
-Follow up requests receive the current timeline and recent conversation. A single correction request may be made when the first response fails local validation. Stop cancels the request or preview work. Changing the project invalidates the draft so it cannot overwrite newer manual edits.
+Follow up requests receive the current timeline and recent conversation. With Allow visual inspection enabled, the model may request specific source ranges before preparing a plan. It can then review locally rendered draft samples and propose one replacement plan. The refined result is rendered again before presentation.
+
+The whole request uses at most six model calls, with at most two source inspection rounds, one validation correction, and one visual refinement. If the budget cannot accommodate a final review, the proposal says that its latest visual review is incomplete. Stop cancels ongoing work. Changing the project invalidates the draft so it cannot overwrite newer manual edits.
 
 ## Privacy and costs
 
 The default request includes project and media names, editable title text, media metadata, timeline timing, selection, playhead, and recent conversation. Asset file paths and original media files are excluded from the model context.
 
-Share sample frames is off by default. Enabling it adds up to six small JPEG images from the first three visual assets. These are beginning and middle samples, not complete scene analysis. No source audio is sent. Choose a model that supports images before enabling this option.
+Allow visual inspection is off by default. Enabling it allows timestamped source samples from any requested visual asset and rendered draft images to reach the selected model. Each source inspection round requests at most six samples, and each model call receives at most six small JPEG images. No original media files or source audio are sent. Choose a model that supports images before enabling this option.
+
+The model can request a source range and sample count. Samples span that range, while a single sample uses its midpoint. Still images yield their one source image. Labels distinguish source times from draft timeline times. The model can return short descriptions grounded in the exact source samples it received. PLSTK rejects notes referencing samples that were not supplied. Sparse observations do not establish continuous motion or complete scene content.
+
+These model generated notes can be reused in later requests without sending the same images again. The bounded session cache is private and tied to source file identity, asset identifier, exact provider endpoint, and model. Changes to a source or relinking invalidate its notes. Disabling visual sharing excludes cached notes from new model input. Forget visual notes clears the cache; New chat also clears it. Notes are never written to a project or a persistent media index.
 
 Keys are stored in macOS Keychain, scoped to the app and exact endpoint. They are not saved in project files, preferences, chat history, or logs. Model configuration is stored separately in app preferences. Requests reject redirects, use HTTPS for remote endpoints, and permit HTTP only for exact loopback hosts.
 
 Cloud usage is billed by the chosen provider. A chat subscription does not automatically supply an API key or API allowance. Local inference can avoid cloud usage charges but requires suitable hardware and a capable installed model. PLSTK does not silently switch providers.
 
-Conversation and pending drafts stay in memory and are cleared by New chat or closing the app. Applied edits become normal project content and participate in saving and recovery.
+Conversation, pending drafts, and visual notes stay in memory and are cleared by New chat or closing the app. Applied edits become normal project content and participate in saving and recovery.
 
 ## Current capabilities
 
@@ -33,9 +39,11 @@ Director can add and arrange source ranges, trim and split visuals, remove clips
 
 Plans target stable identifiers and use integral frames at 30 fps. PLSTK checks all operations on a copied project before publishing the result. The contract rejects unsupported operations, unexpected fields, invalid source ranges, unknown identifiers, collisions, and oversized requests. It cannot execute code, read arbitrary files, fetch media, or publish an export.
 
-The original style instructions encourage clear typography, purposeful pacing, and restrained transitions. They are guidance for existing features, not additional rendering effects. Current limitations include no transcription, semantic scene search, beat detection, automatic audio ducking, motion templates, keyframes, generated media, or autonomous visual review. Sparse images do not establish motion quality or speech content.
+The original style instructions encourage clear typography, purposeful pacing, and restrained transitions. They are guidance for existing features, not additional rendering effects. Current limitations include no transcription, semantic scene search, beat detection, automatic audio ducking, motion templates, keyframes, generated media, or complete temporal scene understanding. Sparse images do not establish motion quality or speech content.
 
-A checked draft provides samples from the beginning, middle, and end of its actual local composition. These help review layout and basic rendering. Play through the applied edit to assess motion and sound. If preview preparation fails, a warning identifies the missing check rather than claiming visual verification.
+A checked draft provides samples from the beginning, middle, and end of its actual local composition. With visual permission, those frames and the checked plan go to the model for composition and readability feedback. The model can accept the draft or propose one complete replacement plan against the original project. PLSTK validates and renders that replacement before a final review, subject to the request budget. Nothing is committed until Apply draft.
+
+The draft card distinguishes a completed sampled layout review from an incomplete review or a local preview alone. An invalid revision preserves the previous checked draft and shows a warning. Repeated refinement suggestions stop at the limit. Play through the applied edit to assess motion and sound. If preview or model review fails, a warning identifies the missing check rather than claiming visual verification.
 
 ## Use another assistant without an integrated connection
 
@@ -60,4 +68,4 @@ The design follows a useful separation observed during static artifact research:
 
 The project contains independently written editing operations, provider adapters, prompts, and interface code. Proprietary package contents, prompt excerpts, original artwork, hosted gateway behavior, billing, and entitlement logic remain outside the public repository. Artifact observations describe the inspected version and do not establish complete runtime behavior or server implementation.
 
-The next development work should test supported live models on real editing tasks, improve temporal footage understanding, add transcription, and expand the renderer with curated motion and design templates.
+The next development work should test supported live models on real editing tasks, add transcription and richer temporal understanding, and expand the renderer with curated motion and design templates.

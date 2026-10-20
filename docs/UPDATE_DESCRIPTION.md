@@ -1,11 +1,11 @@
-# Your model, your edit
+# Director can look before it edits
 
-PLSTK now has a working Director panel. Choose a model endpoint, describe an edit, and review a proposal with sampled preview frames before applying it. Minimal, Editorial, and Energetic offer starting directions using the editor's existing tools.
+With Allow visual inspection enabled, Director can request timestamped footage samples, describe what appears in those samples, and reuse those notes during follow up requests. It can inspect ranges from any visual asset in your Library, rather than receiving only fixed samples from the first few files.
 
-Connect directly through OpenAI compatible, Anthropic, or Ollama interfaces. Keys stay in macOS Keychain. There is no PLSTK account or subscription. Cloud providers may charge for model usage. Sharing small reference frames is optional, and original media files and source audio stay local.
+Director can also review rendered draft frames and propose one visual refinement. The app checks and renders the revised plan before showing it. You still choose Apply draft, and the entire result remains one undoable change. Progress identifies footage inspection, draft building, and layout review.
 
-Director can arrange and trim footage, add titles, adjust transforms, set fades and dissolves, and work with independent audio. Drafts are checked before application and commit as one undoable edit. Changes to the timeline invalidate older drafts. An external assistant can also use a copied editing brief and return a JSON plan for import.
+Visual sharing is optional. Without permission, no images or cached visual notes are sent. Notes stay in memory, are scoped to source identity and the chosen provider/model, and can be cleared from Director options or with New chat. Requests stop at six model calls, with bounded samples and refinement. The interface identifies incomplete reviews rather than claiming success.
 
-All 96 tests pass. Native checks exercise a local fixture provider through prompt submission, sampled images, draft preview, apply, undo, save, and MP4 export. These checks establish the integration, not creative quality with a live model. Automatic transcription, full footage understanding, and advanced motion design remain future work.
+All 111 tests pass. Native verification uses an isolated local fixture provider and synthetic footage to exercise source sampling, review, title refinement, cache clearing, undo, save, and MP4 export. These checks establish the workflow, not live model creative quality or a complete assessment of motion and sound.
 
-Project format remains version 9. The public implementation and prompts are independently written; proprietary reference material and hosted service logic are excluded.
+Project format remains version 9. Transcription, deeper temporal understanding, and curated motion templates remain future work.

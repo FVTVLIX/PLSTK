@@ -76,3 +76,13 @@ DirectorContext exposes a path free projection of assets and timing. Treat media
 Credentials belong to the app Keychain namespace and exact endpoint. Never serialize them into project data or preferences. Keep live provider tests distinct from protocol fixtures. Use isolated preferences, an in memory secret store, and a disposable recovery directory in editor tests. A local fixture endpoint can verify native submission and preview without transmitting footage externally or consuming paid usage.
 
 The CLI exposes context, instructions, dry checks, and revision guarded file application. Do not claim that it automatically synchronizes an already open editor. Draft frame samples verify only selected instants, so play through motion and sound separately. See DIRECTOR.md for current capabilities and limitations.
+
+## Inspection and visual review verification
+
+DirectorStep accepts either a standard edit plan or bounded source inspection requests, with optional observations referencing only the exact source frames supplied. Reject unknown fields, invalid assets, out of range times, excessive samples, and invented observation references before decoding or caching. Distinguish source images from draft timeline images throughout the prompts and validation.
+
+DirectorSceneCache is bounded in memory and keyed by source identity, asset identifier, exact endpoint, provider kind, model, and sampled frames. Check file identity before accepting observations and when reusing them. Never serialize this cache into project files, preferences, or logs. Reusing a note does not turn sparse visual evidence into temporal scene analysis. Disabled sharing must omit both images and cached notes from new model input.
+
+The controller bounds the entire loop to six model calls, two inspection rounds, one validation repair, and one visual revision. Review replacements apply to the original project, not the previous draft. Validate and render them again. Do not attach a completed review to a revision that has not received acceptance. Preserve a checked draft when model review is unavailable, and surface the missing check. Cancellation and project changes must prevent later requests and stale draft publication.
+
+Use synthetic media with distinct source ranges to verify decoded colors and timestamp labels. Exercise a later Library asset, cache reuse and invalidation, opt out, repeated tool requests, invalid visual revisions, refinement limits, and Stop. Native fixture checks should distinguish source sample requests from draft frame review, then exercise Apply, Undo, saving, and decoded export. Keep live model quality evaluation separate from protocol fixtures.

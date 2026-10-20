@@ -22,6 +22,7 @@ struct DirectorPanel: View {
                     Button("Model settings…") { settings = true }
                     Button("Import edit plan…", action: importPlan).disabled(store.busy || director.working)
                     Button("Copy editing brief", action: copyContext).disabled(store.busy)
+                    Button("Forget visual notes") { director.forgetVisualNotes() }.disabled(director.working || director.cachedObservations == 0)
                 } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).frame(width: 22).accessibilityLabel("Director options")
                 Button(action: hide) { Image(systemName: "sidebar.right") }.buttonStyle(.plain).help("Hide Director ]")
             }.padding(12)
@@ -50,7 +51,13 @@ struct DirectorPanel: View {
                                 .background(.white.opacity(message.user ? 0.07 : 0.025), in: RoundedRectangle(cornerRadius: 10)).id(message.id)
                         }
                         if director.working {
-                            HStack { ProgressView().controlSize(.small); Text(director.phase).font(.system(size: 12)); Spacer(); Button("Stop") { director.cancel() } }
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack { ProgressView().controlSize(.small); Text(director.phase).font(.system(size: 12)); Spacer(); Button("Stop") { director.cancel() } }
+                                if director.activity.count > 1 {
+                                    Label(director.activity.dropLast().suffix(2).joined(separator: " · "), systemImage: "checkmark")
+                                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                                }
+                            }
                         }
                         if let draft = director.pending { draftReview(draft) }
                         if let error = director.error {
@@ -86,14 +93,14 @@ struct DirectorPanel: View {
                     if prompt.isEmpty { Text("Describe the edit…").font(.system(size: 12)).foregroundStyle(.tertiary).padding(5).allowsHitTesting(false) }
                 }
             HStack {
-                Toggle("Share sample frames", isOn: $director.shareFrames).toggleStyle(.checkbox).font(.system(size: 10))
-                    .help("Sends up to six small images from the first three visual assets. Audio and original media files are not sent.")
+                Toggle("Allow visual inspection", isOn: $director.shareFrames).toggleStyle(.checkbox).font(.system(size: 10))
+                    .help("Allows requested footage samples and rendered draft images to be sent to your model. Up to six images per request; no source audio or original files.")
                 Spacer()
                 Button(action: send) { Image(systemName: "arrow.up.circle.fill").font(.system(size: 26)) }
                     .buttonStyle(.plain).disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || director.working || store.busy || !director.configured)
                     .help("Prepare draft").accessibilityLabel("Prepare draft")
             }
-            Text(director.configured ? "Sends project names, title text, and timing to \(director.destination). Frames are optional. May use up to two model requests." : "Connect your own model. No PLSTK account or subscription.")
+            Text(director.configured ? "Sends project names, title text, and timing to \(director.destination). Frames are optional. May use up to six model requests." : "Connect your own model. No PLSTK account or subscription.")
                 .font(.system(size: 9)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }.padding(12).background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 12)).padding(12)
             .disabled(director.working || store.busy)
@@ -115,6 +122,18 @@ struct DirectorPanel: View {
                     }
                 }
                 Text("Sampled preview frames. Play through the edit after applying to check motion and sound.").font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+            if let review = draft.visualReview {
+                Label(draft.reviewRevised ? "Layout reviewed after refinement" : "Layout reviewed", systemImage: "eye")
+                    .font(.system(size: 11, weight: .medium))
+                Text(review).font(.system(size: 11)).foregroundStyle(.secondary).textSelection(.enabled)
+                Text("Model feedback covers these sampled stills, not the full motion or sound.")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+            } else if draft.reviewRevised {
+                Label("Draft refined; final visual review incomplete", systemImage: "eye.trianglebadge.exclamationmark")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+            } else if !draft.frames.isEmpty {
+                Label("Local preview only", systemImage: "photo.on.rectangle").font(.system(size: 11)).foregroundStyle(.secondary)
             }
             ForEach(draft.warnings, id: \.self) { warning in
                 Label(warning, systemImage: "exclamationmark.triangle").font(.system(size: 11)).foregroundStyle(.secondary)

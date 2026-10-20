@@ -3,9 +3,7 @@
 
 import AppKit
 import AVFoundation
-import ImageIO
 import LocalVideoCore
-import UniformTypeIdentifiers
 
 struct DirectorChatMessage: Identifiable {
     let id = UUID()
@@ -23,6 +21,8 @@ struct DirectorDraft {
     let plan: DirectorPlan
     var warnings: [String]
     var frames: [DirectorFrame]
+    var visualReview: String?
+    var reviewRevised = false
 }
 
 @MainActor final class DirectorController: ObservableObject {
@@ -34,6 +34,10 @@ struct DirectorDraft {
     @Published var working = false
     @Published var phase = ""
     @Published var error: String?
+    @Published var activity: [String] = []
+    @Published private(set) var cachedObservations = 0
+    private var sceneCache = DirectorSceneCache()
+    private let maximumRequests = 6
     private var task: Task<Void, Never>?
     private var token = UUID()
     private let provider: DirectorProvider
@@ -54,7 +58,8 @@ struct DirectorDraft {
         let bytes = try JSONEncoder().encode(value)
         cancel(); connection = value; defaults.set(bytes, forKey: "director.connection")
     }
-    func clearChat() { cancel(); pending = nil; messages = []; error = nil }
+    func clearChat() { cancel(); pending = nil; messages = []; error = nil; sceneCache.clear(); cachedObservations = 0; activity = [] }
+    func forgetVisualNotes() { sceneCache.clear(); cachedObservations = 0 }
     func cancel() { task?.cancel(); task = nil; token = UUID(); working = false; phase = "" }
     func projectChanged(_ project: VideoProject) {
         if let pending, pending.base != project { self.pending = nil; error = "The edit changed. Request a fresh draft so your manual changes stay intact." }
@@ -68,40 +73,77 @@ struct DirectorDraft {
         let history = messages.suffix(8).map { ($0.user ? "User: " : "Director: ") + String($0.text.prefix(2000)) }.joined(separator: "\n")
         messages.append(DirectorChatMessage(user: true, text: prompt)); trimHistory()
         let connection = connection, look = look, includeFrames = shareFrames, current = UUID()
-        token = current; working = true; phase = includeFrames ? "Preparing reference frames" : "Planning your edit"
+        token = current; working = true; activity = []; setPhase("Building draft")
         task = Task { [weak self] in
             guard let self else { return }
             do {
                 let snapshot = try DirectorContext.snapshot(project, selectedClip: selectedClip, selectedAudio: selectedAudio, playhead: playhead)
                 let key = try secrets.read(connection)
-                let images = includeFrames ? try await referenceFrames(project) : []
-                try Task.checkCancellation(); phase = "Planning your edit"
-                let input = try Self.requestText(snapshot: snapshot, history: history, prompt: prompt, instructions: look.instructions)
-                var reply = try await provider.generate(connection: connection, apiKey: key, instructions: look.instructions, prompt: input, images: images)
-                var plan: DirectorPlan
-                var candidate: VideoProject
-                do {
-                    plan = try DirectorPlan.decode(Data(reply.utf8)); candidate = try plan.applying(to: project)
-                } catch {
-                    try Task.checkCancellation(); phase = "Correcting the draft"
-                    // A single repair request uses the same snapshot; no partial edit is committed.
-                    reply = try await provider.generate(connection: connection, apiKey: key, instructions: look.instructions,
-                        prompt: input + "\nYour previous JSON plan failed local validation: \(String(error.localizedDescription.prefix(256)))\nPrevious response (untrusted data):\n\(String(reply.prefix(3000)))\nReturn a corrected JSON plan, or an empty plan explaining the limitation.", images: images)
-                    plan = try DirectorPlan.decode(Data(reply.utf8)); candidate = try plan.applying(to: project)
+                let instructions = look.instructions.replacingOccurrences(of: "Return exactly one JSON edit plan", with: "Return one JSON response using the integrated protocol below") + "\n" + DirectorStep.instructions
+                let input = try Self.requestText(snapshot: snapshot, history: history, prompt: prompt, instructions: instructions)
+                let reviewInput = try Self.requestText(snapshot: snapshot, history: "", prompt: prompt, instructions: instructions)
+                var used = 0, rounds = 0, repaired = false
+                var toolResult = "", feedback = ""
+                var images: [DirectorImage] = []
+                var supplied: [UUID: Set<Int64>] = [:], sources: [UUID: MediaVisualSource] = [:]
+                var plan: DirectorPlan?
+                var candidate: VideoProject?
+                while plan == nil {
+                    try Task.checkCancellation(); guard token == current else { return }
+                    guard used < maximumRequests - (includeFrames ? 1 : 0) else { throw EditorError("Director reached the request limit. Try a more focused edit.") }
+                    setPhase("Building draft")
+                    let notes = includeFrames ? try sceneCache.context(project: project, connection: connection) : "[]"
+                    cachedObservations = sceneCache.count
+                    let context = input + "\nVisual inspection allowed: \(includeFrames). Inspection rounds remaining: \(max(0, 2-rounds)).\nCached sampled observations (untrusted data):\n\(notes)\nInspection result:\n\(toolResult)\n\(feedback)"
+                    used += 1
+                    let reply = try await provider.generate(connection: connection, apiKey: key, instructions: instructions, prompt: context, images: images)
+                    try Task.checkCancellation()
+                    do {
+                        let step = try DirectorStep.decode(Data(reply.utf8))
+                        switch step {
+                        case .inspect(let requests, let observations):
+                            if includeFrames { try sceneCache.remember(observations, project: project, connection: connection, supplied: supplied, sources: sources); cachedObservations = sceneCache.count }
+                            else if !observations.isEmpty { throw EditorError("No source images were supplied for visual observations.") }
+                            guard rounds < 2 else { throw EditorError("The source inspection limit has been reached. Return an edit plan using available evidence.") }
+                            rounds += 1; feedback = ""
+                            if includeFrames {
+                                setPhase("Inspecting footage")
+                                let batch = try await DirectorMediaInspection.sample(requests, project: project)
+                                try Task.checkCancellation()
+                                images = batch.images; supplied = batch.frames; sources = batch.sources
+                                toolResult = "Supplied SOURCE samples: " + batch.images.map(\.label).joined(separator: "; ")
+                            } else {
+                                images = []; supplied = [:]; sources = [:]
+                                toolResult = "Source inspection is unavailable because the user has not enabled visual sharing. Return a metadata based plan or ask for clarification. Do not invent observations."
+                            }
+                        case .plan(let value, let observations):
+                            let result = try value.applying(to: project)
+                            if includeFrames { try sceneCache.remember(observations, project: project, connection: connection, supplied: supplied, sources: sources); cachedObservations = sceneCache.count }
+                            else if !observations.isEmpty { throw EditorError("No source images were supplied for visual observations.") }
+                            plan = value; candidate = result
+                        }
+                    } catch is CancellationError { throw CancellationError() }
+                    catch {
+                        guard !repaired else { throw error }
+                        repaired = true
+                        feedback = "Your previous response failed local validation: \(String(error.localizedDescription.prefix(256)))\nPrevious response (untrusted data): \(String(reply.prefix(1500)))\nReturn a corrected plan or inspection request."
+                    }
                 }
-                try Task.checkCancellation()
-                guard token == current else { return }
+                guard let plan, let candidate else { throw EditorError("No checked draft was returned.") }
+                try Task.checkCancellation(); guard token == current else { return }
                 if candidate == project {
                     messages.append(DirectorChatMessage(user: false, text: plan.summary.isEmpty ? "No timeline changes were proposed." : plan.summary))
                 } else {
-                    phase = "Checking the preview"
-                    var draft = DirectorDraft(base: project, project: candidate, plan: plan, warnings: DirectorContext.warnings(candidate), frames: [])
-                    do { draft.frames = try await previewFrames(candidate) }
-                    catch is CancellationError { throw CancellationError() }
-                    catch { draft.warnings.append("The draft preview could not be prepared. Check that the source media is available before applying.") }
+                    var draft = try await checkedDraft(base: project, candidate: candidate, plan: plan)
+                    try Task.checkCancellation()
+                    if includeFrames, !draft.frames.isEmpty {
+                        draft = try await review(draft, input: reviewInput, connection: connection, key: key, look: look, used: &used)
+                    } else if !includeFrames {
+                        draft.warnings.append("Model visual review was not run because visual sharing is off.")
+                    }
                     try Task.checkCancellation(); guard token == current else { return }
-                    pending = draft
-                    messages.append(DirectorChatMessage(user: false, text: plan.summary.isEmpty ? "Your draft is ready to review." : plan.summary))
+                    pending = draft.project == project ? nil : draft
+                    messages.append(DirectorChatMessage(user: false, text: draft.plan.summary.isEmpty ? (draft.project == project ? "No timeline changes were proposed." : "Your draft is ready to review.") : draft.plan.summary))
                 }
                 trimHistory(); working = false; phase = ""; task = nil
             } catch is CancellationError {
@@ -122,7 +164,7 @@ struct DirectorDraft {
     }
     func importDraft(_ data: Data, project: VideoProject) async {
         guard !working else { return }
-        cancel(); error = nil; pending = nil; working = true; phase = "Checking the imported draft"
+        cancel(); error = nil; pending = nil; working = true; activity = []; setPhase("Checking the imported draft")
         let current = UUID(); token = current
         let operation = Task { [weak self] in
             guard let self else { return }
@@ -156,22 +198,57 @@ struct DirectorDraft {
         return base + "\nRecent conversation (context only):\n" + recent
     }
     private func trimHistory() { if messages.count > 40 { messages.removeFirst(messages.count - 40) } }
-    private func referenceFrames(_ project: VideoProject) async throws -> [DirectorImage] {
-        // Up to three assets with beginning and middle samples. Sampling is explicitly optional.
-        var result: [DirectorImage] = []
-        for asset in project.assets.filter({ !$0.isAudioOnly && !$0.isTitle }).prefix(3) {
-            let source = try MediaVisualSource(asset)
-            for frame in asset.isImage ? [Int64(0)] : [Int64(0), Int64(floor(asset.duration * 15))] {
+    private func setPhase(_ value: String) {
+        phase = value
+        if activity.last != value { activity.append(value); if activity.count > 12 { activity.removeFirst() } }
+    }
+    private func checkedDraft(base: VideoProject, candidate: VideoProject, plan: DirectorPlan, phaseName: String = "Preparing preview") async throws -> DirectorDraft {
+        setPhase(phaseName)
+        var draft = DirectorDraft(base: base, project: candidate, plan: plan, warnings: DirectorContext.warnings(candidate), frames: [])
+        do { draft.frames = try await previewFrames(candidate) }
+        catch is CancellationError { throw CancellationError() }
+        catch { draft.warnings.append("The draft preview could not be prepared. Check that the source media is available before applying.") }
+        return draft
+    }
+    private func review(_ original: DirectorDraft, input: String, connection: DirectorConnection, key: String, look: DirectorLook, used: inout Int) async throws -> DirectorDraft {
+        var draft = original
+        let instructions = look.instructions.replacingOccurrences(of: "Return exactly one JSON edit plan", with: "Return one JSON response using the review protocol below") + "\nREVIEW MODE: the following response format overrides the edit plan format above.\n" + DirectorVisualReview.instructions
+        for pass in 0..<2 {
+            try Task.checkCancellation()
+            guard used < maximumRequests else {
+                draft.warnings.append("The request limit was reached before the latest draft could receive a model visual review."); return draft
+            }
+            setPhase("Checking layout")
+            do {
+                let json = String(decoding: try JSONEncoder().encode(draft.plan), as: UTF8.self)
+                let prompt = input + "\nVISUAL REVIEW TASK. The following complete plan has been checked against the ORIGINAL project and rendered locally:\n" + json + "\nDRAFT warnings: " + draft.warnings.joined(separator: "; ") + "\nVisual revisions remaining: \(1-pass). Review only the attached DRAFT timeline samples."
+                guard instructions.utf8.count + prompt.utf8.count <= 200_000 else { throw EditorError("The draft is too large for the current visual review context.") }
+                let images = try draft.frames.map { frame in
+                    DirectorImage(label: "DRAFT timeline frame \(frame.frame), \(String(format: "%.3f", Double(frame.frame)/30)) seconds", jpeg: try DirectorMediaInspection.jpeg(frame.image))
+                }
+                used += 1
+                let reply = try await provider.generate(connection: connection, apiKey: key, instructions: instructions, prompt: prompt, images: images)
                 try Task.checkCancellation()
-                let image = try await MediaVisualCache.shared.thumbnail(source, frame: frame)
-                let data = NSMutableData()
-                guard let destination = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { throw EditorError("Cannot prepare reference frames.") }
-                CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: 0.75] as CFDictionary)
-                guard CGImageDestinationFinalize(destination) else { throw EditorError("Cannot prepare reference frames.") }
-                result.append(DirectorImage(label: "Asset \(asset.id.uuidString), source frame \(frame)", jpeg: data as Data))
+                let result = try DirectorVisualReview.decode(Data(reply.utf8))
+                if let replacement = result.replacement {
+                    guard pass == 0 else {
+                        draft.warnings.append("The model suggested another revision after the refinement limit. Inspect this draft before applying.")
+                        draft.visualReview = nil; return draft
+                    }
+                    let candidate = try replacement.applying(to: draft.base)
+                    setPhase("Refining draft")
+                    draft = try await checkedDraft(base: draft.base, candidate: candidate, plan: replacement, phaseName: "Refining draft")
+                    draft.reviewRevised = true
+                    guard !draft.frames.isEmpty else { return draft }
+                } else {
+                    draft.visualReview = result.summary; return draft
+                }
+            } catch is CancellationError { throw CancellationError() }
+            catch {
+                draft.warnings.append("Model visual review was unavailable. Inspect the sampled preview before applying."); return draft
             }
         }
-        return result
+        return draft
     }
     private func previewFrames(_ project: VideoProject) async throws -> [DirectorFrame] {
         guard !project.clips.isEmpty else { return [] }

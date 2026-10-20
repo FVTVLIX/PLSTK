@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Director inspects footage and reviews its drafts
+
+Director can request timestamped samples from specific source ranges anywhere in the visual Library. Short model observations are cached for follow up requests and scoped to the exact source and chosen provider/model. Changed or relinked media invalidates its notes. New chat and Forget visual notes clear the session cache.
+
+Allow visual inspection controls both source sampling and model review of rendered drafts. The model can suggest one complete visual refinement, which is checked and rendered before presentation. Drafts identify whether the latest sampled layout review completed. Missing permission, invalid revisions, unavailable review, and exhausted budgets do not silently become successful visual checks.
+
+Progress identifies footage inspection, draft building, and layout review. Requests allow at most six model calls, two source inspection rounds, six images per call, one validation correction, and one visual refinement. Metadata editing remains available without sharing images. Apply still commits one undoable edit.
+
+Fifteen new tests bring the suite to 111 passing tests. Verification covers actual source colors and timestamps, later Library assets, strict tool messages, cache scope and invalidation, review revisions, repeated request limits, privacy opt out, cancellation, and atomic apply. A native local fixture check exercises inspection, review, refinement, cache clearing, undo, saving, and decoded export. Creative quality with a live model remains unverified. Project format remains version 9.
+
 ### Director with your chosen model
 
 The assistant panel now prepares editable drafts through a user configured OpenAI compatible, Anthropic, or Ollama endpoint. Original design guidance offers Minimal, Editorial, and Energetic starting points. Optional reference frames give an image capable model sparse visual context without uploading original files or audio.

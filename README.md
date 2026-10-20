@@ -52,7 +52,9 @@ Director supports OpenAI compatible providers, Anthropic, and local Ollama throu
 
 Choose Minimal, Editorial, or Energetic as a starting direction. These guide the model's use of existing editing tools. Director can arrange source ranges, trim and split footage, add and update titles, adjust transforms and opacity, set fades and dissolves, work with independent audio, and change the canvas.
 
-Follow up requests receive the current timeline and recent conversation. PLSTK checks proposed operations against a copied project and may request one correction if validation fails. A draft provides locally rendered samples from its beginning, middle, and end when preview preparation succeeds. Apply commits the result as one undoable change. Manual edits invalidate older drafts, and Stop cancels ongoing model or preview work.
+Follow up requests receive the current timeline and recent conversation. With Allow visual inspection enabled, Director can request timestamped samples from specific source ranges anywhere in the visual Library and reuse sampled observations on later requests. It can then inspect rendered draft frames and propose one visual refinement before presenting the result.
+
+PLSTK validates proposed operations against a copied project and renders samples from the draft when preview preparation succeeds. Apply commits the result as one undoable change. Manual edits invalidate older drafts, and Stop cancels ongoing work. Simple progress stages identify footage inspection, draft building, and layout review.
 
 Director options also includes Copy editing brief and Import edit plan. These let another assistant prepare a JSON proposal that PLSTK can check and preview without an integrated model connection.
 
@@ -62,9 +64,9 @@ See [Director setup and capabilities](docs/DIRECTOR.md) for the full workflow, s
 
 A Director request includes project and media names, title text, media metadata, timeline timing, selection, playhead, and recent conversation. Asset file paths, original media files, and source audio are excluded.
 
-Share sample frames is off by default. Enabling it sends up to six small images from the first three visual assets. These are sparse samples, not a complete analysis of the footage.
+Allow visual inspection is off by default. Enabling it lets your model request small footage samples and receive rendered draft images. A request uses at most six model calls, with at most six images in each call. These are sparse samples, not a complete analysis of the footage. Without this permission, Director uses metadata and does not send images or run model visual review.
 
-API keys stay in macOS Keychain, separate from project files and app preferences. Model configuration is stored in app preferences. Conversation and pending drafts stay in memory; applied edits become normal project content. Copy editing brief places project information on the clipboard for you to share deliberately.
+API keys stay in macOS Keychain, separate from project files and app preferences. Model configuration is stored in app preferences. Conversation, pending drafts, and cached visual notes stay in memory; applied edits become normal project content. Notes are scoped to the source file and selected provider/model. New chat clears them, and Director options includes Forget visual notes. Copy editing brief places project information on the clipboard for you to share deliberately.
 
 Requests go to your configured endpoint without a PLSTK hosted gateway. Cloud charges belong to the chosen provider. A chat subscription does not automatically provide an API key or API allowance. PLSTK does not silently switch providers.
 
@@ -139,7 +141,7 @@ The current project format is version 9. Earlier versions open with migration de
 
 ## Current limits
 
-Director does not transcribe speech, identify the best moments across complete footage, generate media, or autonomously judge a finished video. Preview samples cover selected instants. Play through the edit to assess motion, pacing, and sound.
+Director does not transcribe speech, identify the best moments across complete footage, generate media, or judge an entire finished video. Source observations and model layout review cover sampled stills. A review failure or exhausted request budget leaves an explicit warning. Play through the edit to assess motion, pacing, and sound.
 
 Automatic captions, keyframes, advanced effects, motion templates, beat detection, audio ducking, and loudness normalization are not implemented. The Captions and Effects interface entries remain disabled. Audio fades use linear amplitude curves.
 
@@ -158,7 +160,7 @@ swift test
 python3 scripts/smoke-test.py
 ```
 
-The current suite contains 96 tests covering editing, project migration, persistence, recovery, native components, preview and export comparisons, Director plans, provider protocols, cancellation, conflicts, and undo. Provider fixtures and native checks with a local test provider verify the request and editing workflow without establishing live model creative quality.
+The current suite contains 111 tests covering editing, project migration, persistence, recovery, native components, preview and export comparisons, Director plans, provider protocols, timestamped inspection, cache validity, visual refinement, cancellation, conflicts, and undo. Provider fixtures and native checks with a local test provider verify the request and editing workflow without establishing live model creative quality.
 
 The smoke test creates synthetic footage under `TestOutput/` and checks timing, cut boundaries, silent clips, delayed audio, rotation, variable frame rate handling, and export cancellation. Generated media, local projects, credentials, and private reference material are excluded from Git.
 
