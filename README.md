@@ -1,145 +1,120 @@
 # PLSTK
 
-A local video editor for macOS, built for people who want to make a good edit without working through a wall of settings.
+A native video editor for macOS with prompt based editing, your choice of model, and a visual timeline you can adjust yourself.
 
-PLSTK is pronounced like plastic. The idea is simple: bring in your footage, shape it on the timeline, and export it on your own Mac. Everyday controls use icons, visual handles, and simple presets. Exact settings are there when you need them, tucked into Fine tune.
+PLSTK is pronounced like plastic. Bring in your footage, describe the edit you want, and review a proposal before applying it. You can also build an edit manually with icons, presets, and viewer handles. Exact settings stay inside contextual Fine tune controls.
 
-Core editing does not require an account or a subscription. Preview and export run locally. PLSTK does not add a watermark, impose an export quota, or place output sizes behind a paid plan.
-
-![The PLSTK editing workspace](docs/images/editor.jpg)
+PLSTK does not require an account or subscription, add watermarks, or impose export quotas. Preview and export run on your Mac. Director connects directly to the model endpoint you choose. Cloud providers may charge for usage; local models require suitable hardware.
 
 ## Project status
 
-PLSTK is in active development. The editing workflow works today, but this is an early version rather than a finished production editor.
+PLSTK is an early development version with a working editor and Director workflow. Model protocol tests and a local test provider verify the integration. Creative quality and compatibility with individual live models still need broader evaluation.
 
-The current installation path is to build the app from source. A self contained, signed and notarized download is still planned. FFmpeg and ffprobe must currently be installed separately.
+Build the app from source using the instructions below. FFmpeg and ffprobe must be installed separately. The development build uses an ad hoc signature and is not a signed and notarized public release. Development and testing currently take place on Apple silicon; Intel support has not been verified.
 
-Development and testing currently take place on Apple silicon. Intel support has not yet been verified.
+## Get started
 
-## What you can do
-
-### Build an edit
-
-Import video, audio, PNG images, and JPEG images into your Library. Preview an asset before adding it to the timeline, then arrange clips where you want them.
-
-The timeline supports up to 32 visual tracks and two independent audio lanes. Visual layers can overlap, clips can leave gaps, and audio can extend beyond the video. Higher visual layers appear above lower ones.
-
-Move, trim, split, duplicate, and remove visual clips. Move, trim, split, and remove audio clips. Editing actions support undo and redo.
-
-While moving a visual or audio clip, or trimming a visual clip, hold the pointer near either horizontal edge of the timeline to scroll. Scrolling speeds up as you approach the edge. Extra working room appears as you move farther along the edit.
-
-The clip stays with the pointer as the timeline scrolls. Snapping and source limits still apply. Release to commit one undoable edit, or press Escape to cancel the draft. Switching away from the app, hiding the timeline, or changing zoom also cancels an active timeline drag.
-
-### Work visually
-
-Select a clip to open its toolbox. Use Size & position, Rotate, Opacity, Transitions, Trim & split, Sound, and Arrange as appropriate for the selected media.
-
-Drag a clip in the viewer to reposition it. Pull a corner to resize it, or use its circular handle to rotate it. Fit, Inset, Centre, and rotation buttons provide quick starting points.
-
-Transparent PNG images can sit over footage. Opacity lets the layer below show through, making room for logos, overlays, and layered compositions. Still images also have simple duration presets.
-
-Fine tune opens exact values for the option you selected. Back to Library returns to browsing, and selecting the same timeline clip opens its controls again.
-
-### Add titles
-
-Open Text and choose Simple, Statement, or Caption. A five second title appears at the playhead above the overlapping visual layers. Type your words, choose a color, and use Top, Centre, or Bottom to place them quickly.
-
-Use Edit text in the viewer to change the wording without returning to the sidebar. Viewer handles surround the title itself and support moving, resizing, and rotating. Exact size and text alignment live inside Fine tune.
-
-Titles are editable content stored inside the project. No generated image or separate font file needs to travel with the edit. You can trim, split, duplicate, move, or adjust the opacity of a title. Split parts and duplicates can be edited independently. A title can also form a standalone card on a black background.
-
-The Caption preset is a manual text style with a contrasting plate. Automatic transcription and timed caption generation are still planned. Titles currently use system typography, three color choices, and up to eight lines. Long text wraps and shrinks to fit.
-
-### Describe an edit with Director
-
-Connect your chosen OpenAI compatible provider, Anthropic model, or local Ollama endpoint. Describe a change and choose Minimal, Editorial, or Energetic as a design direction. Director prepares a checked proposal with sampled preview frames. Apply it as one undoable edit, or discard it.
-
-Director can work with source ranges, clip placement, titles, transforms, fades, transitions, and sound settings. Follow up requests receive the current timeline and recent conversation. Keys stay in macOS Keychain. Model requests go directly to the endpoint you choose, and cloud usage may incur provider charges.
-
-Project names, title text, and timing are sent with a request. Sharing small reference images is optional and off by default. Original media files and source audio are not uploaded. The current implementation does not transcribe speech or automatically identify the best moments in complete footage.
-
-You can also copy an editing brief for another assistant and import its JSON proposal. See [Director setup and capabilities](docs/DIRECTOR.md) for provider configuration, privacy, limits, and the local editing contract.
-
-### Blend scenes
-
-Select a visual clip and open Transitions. Fade in and Fade out work with footage, images, and titles. Off, Short, Medium, and Long presets keep ordinary edits simple. Fine tune provides exact durations in seconds.
-
-To dissolve between scenes, place two clips directly next to each other on the same visual track. Select the second clip and choose Dissolve from previous. The clips overlap for the chosen duration, blending their picture and embedded sound. Following clips on that track move earlier; other tracks and independent audio stay in place. Removing the dissolve restores the space.
-
-Remove a dissolve before moving or trimming its cut. Splitting outside the blended section keeps the link intact. Visual fades alone leave the clip's sound unchanged, and a fade stays continuous when split. All transition changes support undo, save, and recovery.
-
-### Shape the sound
-
-Independent audio clips support volume, mute, fade in, and fade out. Choose a fade preset, use a slider, or pull the circular handles on the timeline. Exact durations are available in Fine tune.
-
-Fades stay continuous when you split a clip during a ramp. Moving a clip keeps its fade settings. Separate audio lanes can overlap for music and voice, or for opposing fades.
-
-![Simple audio controls in PLSTK](docs/images/audio.jpg)
-
-### Preview and export
-
-Timeline playback uses a local AVFoundation composition and updates after edits. Seek with the ruler, step through frames, and use the viewer to check placement and layering.
-
-Export produces an MP4 with H.264 video and AAC audio at 30 frames per second. Canvas presets include landscape, portrait, and square. Detailed output choices include landscape 720p, 1080p, and 4K, along with portrait and square formats.
-
-If macOS cannot preview a format directly, Playback > Render Preview provides a local FFmpeg fallback. Export also uses FFmpeg.
-
-Cancelling or failing an export preserves an existing destination file. The app also refuses to export over a source asset.
-
-## Requirements
+### Requirements
 
 1. macOS 14 or newer.
 2. Xcode with Swift 6 or newer and an active command line toolchain.
-3. FFmpeg and ffprobe with support for libx264 and AAC.
-4. Python 3 if you want to run the rendering smoke test.
+3. FFmpeg and ffprobe with libx264 and AAC support.
+4. Python 3 for the optional rendering smoke test.
 
-No external Swift packages are currently required. The app uses SwiftUI, AppKit, AVFoundation, CoreGraphics, and ImageIO alongside the local media tools.
+No external Swift package dependencies are required. A model connection is optional for manual editing.
 
-## Build and open
+### Build and open
 
-With Homebrew already installed, install the media tools:
+With Homebrew already installed:
 
 ```sh
 brew install ffmpeg
-```
-
-Clone the repository and build the app:
-
-```sh
 git clone https://github.com/FVTVLIX/PLSTK.git
 cd PLSTK
 bash scripts/build-app.sh
 open "Build/PLSTK.app"
 ```
 
-The build script creates a local app bundle and applies an ad hoc signature. That signature is for development and does not represent a notarized public release.
+See [Building PLSTK](docs/BUILDING.md) for build configurations and verification requirements.
 
-See [Building PLSTK](docs/BUILDING.md) for additional development instructions.
+### Make your first edit
 
-## Make your first edit
+1. Import footage with ⌘I. Files appear in the Library without being inserted automatically.
+2. Preview an asset and choose Add to timeline, or let Director propose an arrangement using your imported assets.
+3. To use Director, choose your model in the assistant panel. Enter the connection type, base URL, model identifier, and API key where required.
+4. Describe a concrete change, such as adding a simple opening title or softening scene changes. Choose Prepare draft, inspect the proposal and preview samples, then Apply draft or Discard.
+5. Adjust the result on the timeline or with the clip toolbox. Each applied draft is one undoable edit.
+6. Save with ⌘S and export an MP4 with ⌘E.
 
-1. Use Import media or press ⌘I. Your files appear in the Library without being inserted automatically.
-2. Click an asset to preview it, then choose Add to timeline.
-3. Move or trim clips directly on the timeline. Click its ruler to set the playhead and use the scissors button to split.
-4. Select a clip and choose a tool. Use the viewer handles or a preset for visual adjustments, or open Fine tune for exact settings.
-5. Add music or another sound, then adjust its volume and fades.
-6. Save the project with ⌘S and export an MP4 with ⌘E.
+## Director
 
-## Your projects and media
+Director supports OpenAI compatible providers, Anthropic, and local Ollama through its compatible `/v1` endpoint. Use a model that supports JSON responses. Sharing images also requires an image capable model.
 
-Project files use the `.localvideo` extension and store the edit rather than copies of your media. Original files remain in their existing locations.
+Choose Minimal, Editorial, or Energetic as a starting direction. These guide the model's use of existing editing tools. Director can arrange source ranges, trim and split footage, add and update titles, adjust transforms and opacity, set fades and dissolves, work with independent audio, and change the canvas.
 
-Paths are relative when an asset is beneath the project folder, and absolute otherwise. Keep source files available. If a file moves, return to the Library and use Relink media.
+Follow up requests receive the current timeline and recent conversation. PLSTK checks proposed operations against a copied project and may request one correction if validation fails. A draft provides locally rendered samples from its beginning, middle, and end when preview preparation succeeds. Apply commits the result as one undoable change. Manual edits invalidate older drafts, and Stop cancels ongoing model or preview work.
 
-Saving an existing project keeps its previous saved version in a backup file. Opening, closing, or replacing an unsaved project prompts before discarding edits.
+Director options also includes Copy editing brief and Import edit plan. These let another assistant prepare a JSON proposal that PLSTK can check and preview without an integrated model connection.
 
-PLSTK also keeps a separate local recovery copy after a brief pause in editing and when the app moves into the background. After an unexpected quit, choose Recover to restore that edit, Not Now to leave it for later, or Discard Copy to remove it. File > Recover Unsaved Edit lets you return to a deferred copy.
+See [Director setup and capabilities](docs/DIRECTOR.md) for the full workflow, supported operations, and CLI commands.
 
-Recovered edits open as unsaved projects. Saving asks for a destination and suggests a name ending in “recovered,” so your original saved project stays unchanged. Media files remain in their existing locations and can be relinked if needed. Recovery does not restore undo history or replace regular saving. Edits made immediately before an unexpected quit may not yet be in the recovery copy.
+### Privacy and model costs
 
-Recovery copies stay in the local Application Support folder for PLSTK. Copies belonging to another running editor are left alone. If a copy cannot be read, it stays on disk. A warning appears if recovery becomes unavailable, with options to retry or show the recovery folder.
+A Director request includes project and media names, title text, media metadata, timeline timing, selection, playhead, and recent conversation. Asset file paths, original media files, and source audio are excluded.
 
-The current project format is version 9. Earlier versions open with migration defaults that preserve their existing timing and visual settings. Older app versions may not open projects saved by newer versions.
+Share sample frames is off by default. Enabling it sends up to six small images from the first three visual assets. These are sparse samples, not a complete analysis of the footage.
+
+API keys stay in macOS Keychain, separate from project files and app preferences. Model configuration is stored in app preferences. Conversation and pending drafts stay in memory; applied edits become normal project content. Copy editing brief places project information on the clipboard for you to share deliberately.
+
+Requests go to your configured endpoint without a PLSTK hosted gateway. Cloud charges belong to the chosen provider. A chat subscription does not automatically provide an API key or API allowance. PLSTK does not silently switch providers.
+
+## The editing workspace
+
+### Timeline and visual controls
+
+Import video, audio, PNG images, and JPEG images. The timeline supports up to 32 visual tracks and two independent audio lanes. Higher visual layers appear above lower ones. Clips can leave gaps, and audio can extend beyond the picture.
+
+Move, trim, split, duplicate, and remove visual clips. Independent audio clips support placement, precise source trimming, splitting, and removal. Editing actions support undo and redo.
+
+Moving clips or trimming visual edges near the horizontal viewport edges scrolls the timeline. Release commits the draft, while Escape cancels it. Snapping and source limits continue to apply.
+
+Select a clip to open its toolbox. Use Size & position, Rotate, Opacity, Transitions, Trim & split, Sound, and Arrange as appropriate for the media. Drag in the viewer to reposition a visual, pull a corner to resize it, or use its rotation handle. Presets provide quick starting points, and Fine tune contains exact values. Back to Library returns to browsing.
+
+Transparent PNG images and opacity support logos, overlays, and layered compositions. Still images also have duration presets.
+
+### Editable titles
+
+Open Text and choose Simple, Statement, or Caption. A five second title appears at the playhead above overlapping visual layers. Enter your words, choose a color, and place the title with Top, Centre, or Bottom. Edit text is also available in the viewer.
+
+Titles are stored inside the project and support duration changes, transforms, opacity, fades, split, and duplicate. Split parts and duplicates can be edited independently. Typography uses system fonts, three color choices, and up to eight lines, with wrapping and size adjustment for longer text.
+
+Caption is a manual title style with a contrasting plate. It does not transcribe speech or generate timed captions.
+
+### Fades, dissolves, and sound
+
+Visual Fade in and Fade out work with footage, images, and titles. Choose Off, Short, Medium, or Long, or enter exact durations inside Fine tune.
+
+For a dissolve, place two clips next to each other on the same visual track. Select the second and choose Dissolve from previous. The clips overlap and blend their picture and embedded sound. Following clips on that track move earlier; other tracks and independent audio stay in place. Removing the dissolve restores the space.
+
+Remove a dissolve before moving or trimming its cut. Splits outside the blend preserve the link. Visual fades alone leave sound unchanged, and fades stay continuous when split.
+
+Independent audio clips support volume, mute, fade in, and fade out through presets, sliders, timeline handles, and exact duration controls. Two lanes allow overlapping music, voice, or opposing fades.
+
+### Preview and export
+
+Timeline playback uses a local AVFoundation composition. Seek with the ruler, step through frames, and check placement in the viewer. Playback > Render Preview provides a local FFmpeg fallback when live preview is unavailable.
+
+Export produces an opaque MP4 with H.264 video and AAC audio at 30 frames per second. Canvas choices include landscape, portrait, and square, with landscape output sizes up to 4K. Export uses FFmpeg and preserves an existing destination if the job fails or is cancelled. Source assets cannot be overwritten by export.
+
+## Projects and recovery
+
+Projects use the `.localvideo` extension and store edits rather than copies of your media. Paths are relative when an asset is beneath the project folder and absolute otherwise. Keep source files available, or use Relink media in the Library if they move.
+
+Saving an existing project keeps its previous saved contents as a backup. PLSTK prompts before discarding unsaved edits and keeps a separate local recovery copy after a brief editing pause and when the app moves into the background.
+
+After an unexpected quit, Recover restores the edit, Not Now defers it, and Discard Copy removes it. File > Recover Unsaved Edit reopens deferred copies. Recovered projects ask for a new save destination to protect the original file. Recovery does not restore undo history or replace regular saving, and the latest changes may not have reached the recovery copy before a crash.
+
+The current project format is version 9. Earlier versions open with migration defaults. Older app versions may not open projects saved by this version.
 
 ## Keyboard shortcuts
 
@@ -159,43 +134,43 @@ The current project format is version 9. Earlier versions open with migration de
 | Mute the selected clip | M |
 | Duplicate a visual clip | ⌘D |
 | Toggle the left panel | [ |
-| Toggle the assistant panel | ] |
+| Toggle Director | ] |
 | Toggle the timeline | Backslash |
 
 ## Current limits
 
-Automatic captions, effects, keyframes, and autonomous footage analysis are still planned. Their interface entries are disabled where implementation is incomplete.
+Director does not transcribe speech, identify the best moments across complete footage, generate media, or autonomously judge a finished video. Preview samples cover selected instants. Play through the edit to assess motion, pacing, and sound.
 
-The current rendering workflow handles SDR output. Full HDR and color management, every codec combination, and all variable frame rate inputs have not been verified. macOS codec support determines what can play in the live preview.
+Automatic captions, keyframes, advanced effects, motion templates, beat detection, audio ducking, and loudness normalization are not implemented. The Captions and Effects interface entries remain disabled. Audio fades use linear amplitude curves.
 
-Audio lanes mix without automatic loudness normalization. Fades use linear amplitude curves, and the final MP4 is opaque rather than an export with transparency.
+The rendering workflow targets SDR. Full HDR and color management, every codec combination, and all variable frame rate inputs have not been verified. macOS codec support determines what can play in live preview.
 
-Only one timeline clip can be selected at a time. Vertical scrolling while dragging between tracks, persistent media caches, and bundled media workers remain future work.
+Only one timeline clip can be selected at a time. Vertical scrolling during a track drag, persistent media caches, bundled media tools, and a signed and notarized installer are not available yet.
 
 ## Development and verification
 
-The desktop app and command line tool share the same project model, validation, and rendering code.
+The desktop app and CLI share the project model, editing validation, and renderer. Source is organized into `Sources/LocalVideoCore`, `Sources/LocalVideoEditor`, and `Sources/LocalVideoCLI`.
+
+Run verification in a macOS desktop session with the required media tools installed:
 
 ```sh
 swift test
 python3 scripts/smoke-test.py
 ```
 
-The current suite contains 96 tests. Coverage includes project migration, save and load, editing operations, transforms, layered visuals, image transparency, audio mixing, fade continuity, visual transitions, Director plans and provider protocols, editable titles, project recovery, timeline navigation, and decoded comparisons between preview and export.
+The current suite contains 96 tests covering editing, project migration, persistence, recovery, native components, preview and export comparisons, Director plans, provider protocols, cancellation, conflicts, and undo. Provider fixtures and native checks with a local test provider verify the request and editing workflow without establishing live model creative quality.
 
-The smoke test generates synthetic footage under `TestOutput/` and checks timing, cut boundaries, silent clips, delayed audio, rotation, variable frame rate handling, and export cancellation. Generated media and local project files are excluded from Git.
+The smoke test creates synthetic footage under `TestOutput/` and checks timing, cut boundaries, silent clips, delayed audio, rotation, variable frame rate handling, and export cancellation. Generated media, local projects, credentials, and private reference material are excluded from Git.
 
-Source areas are `Sources/LocalVideoCore`, `Sources/LocalVideoEditor`, and `Sources/LocalVideoCLI`. Tests live in `Tests`, while packaging and verification scripts live in `scripts`.
-
-See [Development](docs/DEVELOPMENT.md) for the contribution and commit workflow.
+See [Development](docs/DEVELOPMENT.md) for contribution and verification guidance, [the changelog](CHANGELOG.md) for updates, and [the latest update description](docs/UPDATE_DESCRIPTION.md) for the current milestone.
 
 ## Design and contributions
 
-PLSTK needs a visual identity that feels as approachable as its editing controls. App icon concepts, a wordmark, and presentation assets are welcome. The [brand direction](docs/BRAND_DIRECTION.md) describes the starting ideas and the assets we need.
+App icon concepts, a wordmark, and presentation assets are welcome. The [brand direction](docs/BRAND_DIRECTION.md) describes the starting ideas.
 
-For bugs, include your macOS version, the relevant steps, and the behavior you expected. Share synthetic or anonymized sample media when possible. Avoid posting private projects, credentials, or personal file paths in public issues.
+For bugs, include your macOS version, reproduction steps, and the expected behavior. Use synthetic or anonymized media where possible, and keep private projects, credentials, and personal file paths out of public issues.
 
-For larger changes, open an issue first so we can agree on scope. Keep everyday editing simple, preserve access to exact settings, and verify that an edit looks and sounds the same in preview and export.
+For larger changes, open an issue to agree on scope. Keep everyday editing approachable, preserve contextual access to precise settings, and verify the result in preview and export.
 
 ## License
 
