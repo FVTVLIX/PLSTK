@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Director with your chosen model
+
+The assistant panel now prepares editable drafts through a user configured OpenAI compatible, Anthropic, or Ollama endpoint. Original design guidance offers Minimal, Editorial, and Energetic starting points. Optional reference frames give an image capable model sparse visual context without uploading original files or audio.
+
+Drafts use bounded JSON operations against the current project. PLSTK validates a copied timeline, makes at most one correction request, renders local sample frames, and waits for Apply draft. Applying is one undoable change. Manual edits invalidate pending drafts. Stop cancels model and imported preview work.
+
+Keys stay in macOS Keychain and configuration stays separate from project files. No Cardboard gateway, usage meter, subscription gate, proprietary code, artwork, or copied prompt is included. The new editing brief and CLI commands also support external assistants and checked plan import.
+
+Twenty six new tests bring the suite to 96 passing tests. Coverage includes atomic plans, invalid operations, provider protocols, redirects, cancellation, bounded requests, context privacy, repair, local previews, conflicts, and undo. Native verification uses a local fixture provider and synthetic footage to check settings, prompt submission, optional images, review, apply, undo, saving, and decoded export. Live model creative quality remains unverified. Project format remains version 9.
+
 ### Visual fades and scene dissolves
 
 Transitions now provides simple icon presets for visual Fade in, Fade out, and Dissolve from previous. Precise durations are available inside Fine tune. The panel follows the selected clip, and transitions also appear in the contextual clip toolbox.

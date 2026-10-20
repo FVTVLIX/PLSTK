@@ -20,6 +20,9 @@ xcuserdata/
 *.localvideo
 *.localvideo.backup
 *.recovery
+*.director-plan.json
+*.director-context.json
+*.director-chat.json
 /Recovery/
 *.backup
 *.log
@@ -105,6 +108,7 @@ venv/
 /docs/*
 !/docs/BUILDING.md
 !/docs/DEVELOPMENT.md
+!/docs/DIRECTOR.md
 !/docs/BRAND_DIRECTION.md
 !/docs/UPDATE_DESCRIPTION.md
 !/docs/images/

@@ -1,9 +1,11 @@
-# Smoother scene changes
+# Your model, your edit
 
-PLSTK now includes visual fades and cross dissolves. Select a clip and choose an icon preset for a short, medium, or long transition. Exact durations stay inside Fine tune.
+PLSTK now has a working Director panel. Choose a model endpoint, describe an edit, and review a proposal with sampled preview frames before applying it. Minimal, Editorial, and Energetic offer starting directions using the editor's existing tools.
 
-Fade footage, images, and titles at either end. To blend neighboring scenes, select the second clip and choose Dissolve from previous. The clips overlap, their sound blends, and later clips on the same track move earlier. Other tracks stay in place. Remove the dissolve before moving or trimming its cut.
+Connect directly through OpenAI compatible, Anthropic, or Ollama interfaces. Keys stay in macOS Keychain. There is no PLSTK account or subscription. Cloud providers may charge for model usage. Sharing small reference frames is optional, and original media files and source audio stay local.
 
-The Transitions panel follows your selection so you can work through the edit without reopening controls. Changes support undo, saving, and recovery. Project format 9 opens earlier projects with migration defaults; older app versions cannot open the new format.
+Director can arrange and trim footage, add titles, adjust transforms, set fades and dissolves, and work with independent audio. Drafts are checked before application and commit as one undoable edit. Changes to the timeline invalidate older drafts. An external assistant can also use a copied editing brief and return a JSON plan for import.
 
-All 70 tests pass. Verification includes matching preview and export frames, layered images, transparent titles, transforms, continuous fades across splits, linked edits, recovery, and sound blending. Native app checks cover presets, precise durations, and undo.
+All 96 tests pass. Native checks exercise a local fixture provider through prompt submission, sampled images, draft preview, apply, undo, save, and MP4 export. These checks establish the integration, not creative quality with a live model. Automatic transcription, full footage understanding, and advanced motion design remain future work.
+
+Project format remains version 9. The public implementation and prompts are independently written; proprietary reference material and hosted service logic are excluded.

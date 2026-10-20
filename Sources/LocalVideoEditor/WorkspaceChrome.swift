@@ -36,41 +36,6 @@ struct WorkspaceRail: View {
     }
 }
 
-struct DirectorPanel: View {
-    var hide: () -> Void
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("New chat").font(.system(size: 12)).padding(.horizontal, 8).padding(.vertical, 5)
-                    .background(Color.white.opacity(0.06)).clipShape(RoundedRectangle(cornerRadius: 6))
-                Spacer()
-                Button(action: hide) { Image(systemName: "sidebar.right") }.buttonStyle(.plain).help("Hide Director ]")
-            }.padding(12)
-            Spacer()
-            VStack(spacing: 14) {
-                Image(systemName: "bubble.left.and.text.bubble.right").font(.system(size: 28, weight: .ultraLight)).foregroundStyle(.tertiary)
-                Text("Your editing assistant").font(.system(size: 13, weight: .medium))
-                Text("Your assistant will be available here soon.").font(.system(size: 12)).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }.padding(24)
-            Spacer()
-            VStack(alignment: .leading) {
-                Text("Describe the edit…").font(.system(size: 12)).foregroundStyle(.tertiary)
-                Spacer()
-                HStack {
-                    Image(systemName: "paperclip").foregroundStyle(.tertiary)
-                    Spacer()
-                    Text("Assistant unavailable").font(.system(size: 10)).foregroundStyle(.secondary)
-                    Image(systemName: "arrow.up.circle.fill").font(.system(size: 24)).foregroundStyle(.tertiary)
-                }
-            }.padding(16).frame(height: 118).background(Color(white: 0.15))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.08)))
-                .padding(12).accessibilityElement(children: .combine).accessibilityLabel("Assistant unavailable. Chat editing unavailable.")
-        }.frame(maxHeight: .infinity).background(WorkspaceStyle.panel)
-    }
-}
-
 /// Scope plain editing keys to this window, and let text fields receive text.
 struct WorkspaceKeyboard: NSViewRepresentable {
     let handle: (String, NSEvent.ModifierFlags) -> Bool

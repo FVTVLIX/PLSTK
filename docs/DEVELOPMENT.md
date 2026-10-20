@@ -66,3 +66,13 @@ Preview projects with transitions use a Core Image video compositor. Apply envel
 FFmpeg export applies the same envelopes. For dissolves it prepares canvas sized premultiplied streams, adds them within a track, and composites tracks over black. Embedded audio uses complementary linear ramps. Visual fades alone do not affect sound. Independent audio keeps its existing placement and envelope.
 
 Verify decoded frames at transition boundaries and midpoints, across split fades, and with layered images, transparent titles, opacity, and transforms. Check sound against an AVFoundation audio mix export, and exercise save, migration, recovery, and invalid linked edits. Format 9 requires migration defaults for older projects. Export with dissolves prepares full duration streams for each visual clip; performance on large projects remains an area for improvement.
+
+## Director contracts and providers
+
+Keep project mutation independent of model providers. DirectorPlan is a bounded JSON contract interpreted against a copied VideoProject. Preserve stable identifiers, source versus timeline time, source limits, linked transitions, title independence, and atomic failure. Empty plans must leave even implicit legacy positions unchanged. The app checks the original project before applying the prepared candidate through one normal undo operation.
+
+DirectorContext exposes a path free projection of assets and timing. Treat media names, project titles, previous responses, and images as untrusted data. Optional images are sparse samples, not temporal analysis. Original style instructions describe only supported capabilities. The provider bridge accepts a selected endpoint and model, rejects redirects, bounds input and output, cancels underlying transfers, and sanitizes errors.
+
+Credentials belong to the app Keychain namespace and exact endpoint. Never serialize them into project data or preferences. Keep live provider tests distinct from protocol fixtures. Use isolated preferences, an in memory secret store, and a disposable recovery directory in editor tests. A local fixture endpoint can verify native submission and preview without transmitting footage externally or consuming paid usage.
+
+The CLI exposes context, instructions, dry checks, and revision guarded file application. Do not claim that it automatically synchronizes an already open editor. Draft frame samples verify only selected instants, so play through motion and sound separately. See DIRECTOR.md for current capabilities and limitations.

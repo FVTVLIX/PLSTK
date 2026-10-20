@@ -50,6 +50,16 @@ Titles are editable content stored inside the project. No generated image or sep
 
 The Caption preset is a manual text style with a contrasting plate. Automatic transcription and timed caption generation are still planned. Titles currently use system typography, three color choices, and up to eight lines. Long text wraps and shrinks to fit.
 
+### Describe an edit with Director
+
+Connect your chosen OpenAI compatible provider, Anthropic model, or local Ollama endpoint. Describe a change and choose Minimal, Editorial, or Energetic as a design direction. Director prepares a checked proposal with sampled preview frames. Apply it as one undoable edit, or discard it.
+
+Director can work with source ranges, clip placement, titles, transforms, fades, transitions, and sound settings. Follow up requests receive the current timeline and recent conversation. Keys stay in macOS Keychain. Model requests go directly to the endpoint you choose, and cloud usage may incur provider charges.
+
+Project names, title text, and timing are sent with a request. Sharing small reference images is optional and off by default. Original media files and source audio are not uploaded. The current implementation does not transcribe speech or automatically identify the best moments in complete footage.
+
+You can also copy an editing brief for another assistant and import its JSON proposal. See [Director setup and capabilities](docs/DIRECTOR.md) for provider configuration, privacy, limits, and the local editing contract.
+
 ### Blend scenes
 
 Select a visual clip and open Transitions. Fade in and Fade out work with footage, images, and titles. Off, Short, Medium, and Long presets keep ordinary edits simple. Fine tune provides exact durations in seconds.
@@ -154,7 +164,7 @@ The current project format is version 9. Earlier versions open with migration de
 
 ## Current limits
 
-Automatic captions, effects, keyframes, and a connected editing assistant are still planned. Their interface entries are disabled where implementation is incomplete.
+Automatic captions, effects, keyframes, and autonomous footage analysis are still planned. Their interface entries are disabled where implementation is incomplete.
 
 The current rendering workflow handles SDR output. Full HDR and color management, every codec combination, and all variable frame rate inputs have not been verified. macOS codec support determines what can play in the live preview.
 
@@ -171,7 +181,7 @@ swift test
 python3 scripts/smoke-test.py
 ```
 
-The current suite contains 70 tests. Coverage includes project migration, save and load, editing operations, transforms, layered visuals, image transparency, audio mixing, fade continuity, visual transitions, editable titles, project recovery, timeline navigation, and decoded comparisons between preview and export.
+The current suite contains 96 tests. Coverage includes project migration, save and load, editing operations, transforms, layered visuals, image transparency, audio mixing, fade continuity, visual transitions, Director plans and provider protocols, editable titles, project recovery, timeline navigation, and decoded comparisons between preview and export.
 
 The smoke test generates synthetic footage under `TestOutput/` and checks timing, cut boundaries, silent clips, delayed audio, rotation, variable frame rate handling, and export cancellation. Generated media and local project files are excluded from Git.
 

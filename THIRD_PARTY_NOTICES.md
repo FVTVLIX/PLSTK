@@ -26,7 +26,7 @@ Copyright licenses do not by themselves resolve every patent or distribution iss
 
 ## Apple platform resources
 
-SwiftUI, AppKit, AVFoundation, CoreGraphics, CoreText, CoreImage, ImageIO, and other system frameworks are supplied by the Apple development tools and operating system. PLSTK does not relicense those frameworks.
+SwiftUI, AppKit, AVFoundation, CoreGraphics, CoreText, CoreImage, ImageIO, CryptoKit, Security, and other system frameworks are supplied by the Apple development tools and operating system. PLSTK does not relicense those frameworks.
 
 Titles use system typography through Core Text. Font files are not copied into the repository or app bundle.
 

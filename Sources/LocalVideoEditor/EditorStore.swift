@@ -20,6 +20,8 @@ import UniformTypeIdentifiers
     private var recoveryStarted = false
     private var recoveredEdit = false
     private var recovery: ProjectRecovery?
+    private let recoveryDirectoryOverride: URL?
+    init(recoveryDirectory: URL? = nil) { recoveryDirectoryOverride = recoveryDirectory }
     private var recoveryWork: DispatchWorkItem?
     private var recoveryRevision = UUID()
     private let recoveryQueue = DispatchQueue(label: "studio.localvideo.recovery", qos: .utility)
@@ -497,6 +499,7 @@ import UniformTypeIdentifiers
 // Recovery uses its own serial writer so delayed edits cannot resurrect a discarded copy.
 extension EditorStore {
     private var recoveryDirectory: URL {
+        if let recoveryDirectoryOverride { return recoveryDirectoryOverride }
         // An isolated directory allows native verification without touching real recovery data.
         if let path = ProcessInfo.processInfo.environment["PLSTK_RECOVERY_DIRECTORY"], path.hasPrefix("/") {
             return URL(fileURLWithPath: path, isDirectory: true)

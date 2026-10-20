@@ -46,6 +46,7 @@ struct EditorView: View {
     @State private var moveDraft: VisualMoveDraft?
     @State private var gestureCancelled = false
     @StateObject private var timelineScroll = TimelineScrollController()
+    @StateObject private var director = DirectorController()
     @State private var dragTranslation = CGSize.zero
 
     var body: some View {
@@ -90,7 +91,7 @@ struct EditorView: View {
                         directorWidth = min(500, max(300, (resizeOrigin ?? 384) - delta))
                         if ended { resizeOrigin = nil }
                     }
-                    DirectorPanel { showDirector = false }.frame(width: directorWidth)
+                    DirectorPanel(store: store, director: director) { showDirector = false }.frame(width: directorWidth)
                 }
             }
         }
@@ -113,7 +114,8 @@ struct EditorView: View {
                 timelineScroll.cancel()
             }
         }
-        .onChange(of: store.project) { _, _ in
+        .onChange(of: store.project) { _, project in
+            director.projectChanged(project)
             if trimDraft != nil || movingClip != nil { gestureCancelled = true }
             trimDraft = nil; movingClip = nil; moveDraft = nil
             timelineScroll.cancel()
