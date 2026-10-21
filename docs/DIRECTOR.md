@@ -11,7 +11,7 @@ This is an early implementation. The editing workflow is functional, while creat
 3. Select OpenAI compatible, Anthropic, or Ollama. Enter the provider base URL, model identifier, and an API key where required. The model must support JSON responses. Ollama uses its compatible `/v1` endpoint.
 4. Choose Minimal, Editorial, or Energetic as a starting direction.
 5. Describe the edit and choose Prepare draft.
-6. Review the explanation, sampled preview frames, and any warnings. Apply draft commits the proposal as one undoable edit. Discard leaves the timeline unchanged.
+6. Review the explanation, sampled preview frames, and any warnings. Choose Watch draft to play and seek through the proposal with sound before applying it. Apply draft commits the proposal as one undoable edit. Discard leaves the timeline unchanged.
 
 Follow up requests receive the current timeline and recent conversation. With Allow visual inspection enabled, the model may request specific source ranges before preparing a plan. It can then review locally rendered draft samples and propose one replacement plan. The refined result is rendered again before presentation.
 
@@ -43,7 +43,15 @@ The original style instructions encourage clear typography, purposeful pacing, a
 
 A checked draft provides samples from the beginning, middle, and end of its actual local composition. With visual permission, those frames and the checked plan go to the model for composition and readability feedback. The model can accept the draft or propose one complete replacement plan against the original project. PLSTK validates and renders that replacement before a final review, subject to the request budget. Nothing is committed until Apply draft.
 
-The draft card distinguishes a completed sampled layout review from an incomplete review or a local preview alone. An invalid revision preserves the previous checked draft and shows a warning. Repeated refinement suggestions stop at the limit. Play through the applied edit to assess motion and sound. If preview or model review fails, a warning identifies the missing check rather than claiming visual verification.
+The draft card distinguishes a completed sampled layout review from an incomplete review or a local preview alone. An invalid revision preserves the previous checked draft and shows a warning. Repeated refinement suggestions stop at the limit. Watch draft lets you assess motion and sound before applying. If preview or model review fails, a warning identifies the missing check rather than claiming visual verification.
+
+## Watch before applying
+
+Watch draft opens a separate native player built from the proposed project, including its visual layers, titles, transitions, and audio mix. Playback starts paused. Use the player controls to play, seek, and change listening volume, or press Space to play and pause. Preview volume changes affect listening only, not the proposed edit.
+
+Opening the player pauses the editor's playback. Back to editor or Escape closes the player, stops its sound, and returns to the same proposal. The original project, timeline playhead, and undo history stay intact. Apply draft is also available in the player and uses the same current project check and single undo step. A replaced or invalidated proposal closes the review.
+
+This is local playback, available with visual sharing off and for imported edit plans. It makes no model calls and does not mark a draft as visually approved. Drafts without visual clips cannot be watched. If the composition cannot be prepared or played, the player reports the problem and offers a retry; the proposal remains available in the editor. There is no separate rendered fallback inside this player.
 
 ## Use another assistant without an integrated connection
 

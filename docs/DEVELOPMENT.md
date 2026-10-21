@@ -77,6 +77,10 @@ Credentials belong to the app Keychain namespace and exact endpoint. Never seria
 
 The CLI exposes context, instructions, dry checks, and revision guarded file application. Do not claim that it automatically synchronizes an already open editor. Draft frame samples verify only selected instants, so play through motion and sound separately. See DIRECTOR.md for current capabilities and limitations.
 
+DirectorDraftPlayer builds a separate TimelinePreview and AVPlayer for a pending proposal. Keep its player, seek position, listening volume, and lifetime independent of EditorStore. Closing must cancel preparation, detach the item, and stop sound. Generation checks reject late results even when a builder does not cooperate with cancellation. Replaced or invalidated draft identities close the review. Applying still goes through DirectorController's current project guard and normal undo path.
+
+Verify draft picture and audio against export using synthetic footage, then check native playback, seeking, Space, Back to editor, Escape, Apply, and Undo. Review must remain available for imported plans without a provider connection or visual sharing. Playback errors must leave the proposal available for retry or dismissal.
+
 ## Inspection and visual review verification
 
 DirectorStep accepts either a standard edit plan or bounded source inspection requests, with optional observations referencing only the exact source frames supplied. Reject unknown fields, invalid assets, out of range times, excessive samples, and invented observation references before decoding or caching. Distinguish source images from draft timeline images throughout the prompts and validation.

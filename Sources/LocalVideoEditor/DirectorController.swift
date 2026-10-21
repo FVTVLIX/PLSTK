@@ -15,7 +15,8 @@ struct DirectorFrame: Identifiable {
     let frame: Int64
     let image: CGImage
 }
-struct DirectorDraft {
+struct DirectorDraft: Identifiable {
+    let id = UUID()
     let base: VideoProject
     let project: VideoProject
     let plan: DirectorPlan

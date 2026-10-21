@@ -1,11 +1,11 @@
-# Director can look before it edits
+# Watch a draft before applying it
 
-With Allow visual inspection enabled, Director can request timestamped footage samples, describe what appears in those samples, and reuse those notes during follow up requests. It can inspect ranges from any visual asset in your Library, rather than receiving only fixed samples from the first few files.
+Director proposals now include Watch draft. Play the proposed edit with sound, seek through it, and adjust listening volume before changing your timeline. The local player uses the same composition as PLSTK's native preview.
 
-Director can also review rendered draft frames and propose one visual refinement. The app checks and renders the revised plan before showing it. You still choose Apply draft, and the entire result remains one undoable change. Progress identifies footage inspection, draft building, and layout review.
+Back to editor or Escape closes playback and returns to the proposal. Your original edit, timeline playhead, and undo history remain intact. Apply draft is available in the player and commits one undoable change. Closing cancels preparation, stops playback, and prevents older work from replacing a newer player.
 
-Visual sharing is optional. Without permission, no images or cached visual notes are sent. Notes stay in memory, are scoped to source identity and the chosen provider/model, and can be cleared from Director options or with New chat. Requests stop at six model calls, with bounded samples and refinement. The interface identifies incomplete reviews rather than claiming success.
+Watching a draft requires no additional model calls or visual sharing permission. It also works with imported edit plans. Drafts without picture cannot be watched; unavailable media shows a retryable problem while leaving the proposal in place.
 
-All 111 tests pass. Native verification uses an isolated local fixture provider and synthetic footage to exercise source sampling, review, title refinement, cache clearing, undo, save, and MP4 export. These checks establish the workflow, not live model creative quality or a complete assessment of motion and sound.
+All 115 tests pass. New checks compare draft picture and audio with export and cover independent playback state, undo, cancellation, replacement races, and missing media retry. Native verification uses synthetic footage and an imported plan to check playback, seeking, Space, listening volume, Back to editor, Escape, Apply, and Undo without a model connection.
 
-Project format remains version 9. Transcription, deeper temporal understanding, and curated motion templates remain future work.
+Project format remains version 9. No dependencies were added. Transcription, deeper temporal understanding, curated motion templates, and broader live model evaluation remain future work.

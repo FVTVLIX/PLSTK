@@ -42,7 +42,7 @@ See [Building PLSTK](docs/BUILDING.md) for build configurations and verification
 1. Import footage with ⌘I. Files appear in the Library without being inserted automatically.
 2. Preview an asset and choose Add to timeline, or let Director propose an arrangement using your imported assets.
 3. To use Director, choose your model in the assistant panel. Enter the connection type, base URL, model identifier, and API key where required.
-4. Describe a concrete change, such as adding a simple opening title or softening scene changes. Choose Prepare draft, inspect the proposal and preview samples, then Apply draft or Discard.
+4. Describe a concrete change, such as adding a simple opening title or softening scene changes. Choose Prepare draft, inspect the proposal, and choose Watch draft to check motion and sound before Apply draft or Discard.
 5. Adjust the result on the timeline or with the clip toolbox. Each applied draft is one undoable edit.
 6. Save with ⌘S and export an MP4 with ⌘E.
 
@@ -55,6 +55,8 @@ Choose Minimal, Editorial, or Energetic as a starting direction. These guide the
 Follow up requests receive the current timeline and recent conversation. With Allow visual inspection enabled, Director can request timestamped samples from specific source ranges anywhere in the visual Library and reuse sampled observations on later requests. It can then inspect rendered draft frames and propose one visual refinement before presenting the result.
 
 PLSTK validates proposed operations against a copied project and renders samples from the draft when preview preparation succeeds. Apply commits the result as one undoable change. Manual edits invalidate older drafts, and Stop cancels ongoing work. Simple progress stages identify footage inspection, draft building, and layout review.
+
+Watch draft opens a separate local player with playback, seeking, and volume controls. Back to editor returns to the proposal without changing the timeline or its playhead. You can also Apply draft from the player. Reviewing sends no additional model requests and does not require visual sharing. Drafts without picture cannot be played, and unsupported media may prevent playback.
 
 Director options also includes Copy editing brief and Import edit plan. These let another assistant prepare a JSON proposal that PLSTK can check and preview without an integrated model connection.
 
@@ -160,7 +162,7 @@ swift test
 python3 scripts/smoke-test.py
 ```
 
-The current suite contains 111 tests covering editing, project migration, persistence, recovery, native components, preview and export comparisons, Director plans, provider protocols, timestamped inspection, cache validity, visual refinement, cancellation, conflicts, and undo. Provider fixtures and native checks with a local test provider verify the request and editing workflow without establishing live model creative quality.
+The current suite contains 115 tests covering editing, project migration, persistence, recovery, native components, preview and export comparisons, Director plans, provider protocols, timestamped inspection, cache validity, visual refinement, draft playback, cancellation, conflicts, and undo. Provider fixtures and native checks with a local test provider verify the request and editing workflow without establishing live model creative quality.
 
 The smoke test creates synthetic footage under `TestOutput/` and checks timing, cut boundaries, silent clips, delayed audio, rotation, variable frame rate handling, and export cancellation. Generated media, local projects, credentials, and private reference material are excluded from Git.
 

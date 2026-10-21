@@ -12,6 +12,7 @@ struct DirectorPanel: View {
     @State private var prompt = ""
     @State private var settings = false
     @State private var details = false
+    @State private var playback: DirectorDraft?
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -75,6 +76,12 @@ struct DirectorPanel: View {
             composer
         }.background(WorkspaceStyle.panel)
             .sheet(isPresented: $settings) { DirectorConnectionSheet(director: director) }
+            .sheet(item: $playback) { draft in
+                DirectorDraftPlayback(draft: draft, store: store, director: director)
+            }
+            .onChange(of: director.pending?.id) { _, id in
+                if playback?.id != id { playback = nil }
+            }
     }
     private var composer: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -121,8 +128,14 @@ struct DirectorPanel: View {
                             .clipShape(RoundedRectangle(cornerRadius: 4)).accessibilityLabel("Draft sample at frame \(item.frame)")
                     }
                 }
-                Text("Sampled preview frames. Play through the edit after applying to check motion and sound.").font(.system(size: 10)).foregroundStyle(.secondary)
+                Text("Sampled preview frames. Watch the draft to check motion and sound before applying.").font(.system(size: 10)).foregroundStyle(.secondary)
             }
+            Button {
+                store.player?.pause()
+                playback = draft
+            } label: { Label("Watch draft", systemImage: "play.rectangle") }
+                .buttonStyle(.bordered)
+                .disabled(store.busy || director.working || draft.base != store.project || draft.project.clips.isEmpty)
             if let review = draft.visualReview {
                 Label(draft.reviewRevised ? "Layout reviewed after refinement" : "Layout reviewed", systemImage: "eye")
                     .font(.system(size: 11, weight: .medium))

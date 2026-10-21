@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Watch Director drafts before applying
+
+Director proposals now include Watch draft, a separate local player for checking motion and sound before committing an edit. Native playback controls support seeking and listening volume. Back to editor returns to the proposal, while Apply draft commits the same single undoable change from either view.
+
+Review leaves the original timeline, playhead, and undo history intact. Closing stops playback and cancels preparation; outdated results cannot replace a newer player. Unavailable media reports a retryable problem. No model calls, visual sharing permission, dependencies, or project format changes are required.
+
+Four new tests cover picture and audio agreement with export, project isolation and undo, late preparation results, replacement races, and retry after missing media. Native verification covers playback, seeking, returning, applying, and undo.
+
 ### Director inspects footage and reviews its drafts
 
 Director can request timestamped samples from specific source ranges anywhere in the visual Library. Short model observations are cached for follow up requests and scoped to the exact source and chosen provider/model. Changed or relinked media invalidates its notes. New chat and Forget visual notes clear the session cache.
